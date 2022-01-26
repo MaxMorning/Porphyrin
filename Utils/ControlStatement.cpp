@@ -41,7 +41,7 @@ int merge(int list1, int list2)
     }
 }
 
-void backpatch(int list, int addr)
+void back_patch(int list, int addr)
 {
     while (true)
     {
@@ -101,8 +101,8 @@ int If__if_LeftBrace_Expr_RightBrace_Statement_post_action(int* return_values_pt
         S->nextlist += 2;
     }
 
-    backpatch(E->truelist, S->quad);
-    backpatch(E->falselist, S->nextlist);
+    back_patch(E->truelist, S->quad);
+    back_patch(E->falselist, S->nextlist);
 
     clear_symbol_stack();
     --current_layer;
@@ -137,9 +137,9 @@ int If__if_LeftBrace_Expr_RightBrace_Statement_else_Statement_post_action(int* r
     S2->quad += 1;
     S2->nextlist += 1;
 
-    backpatch(E->truelist, S1->quad);
-    backpatch(E->falselist, S2->quad);
-    backpatch(S1->nextlist, S2->nextlist);
+    back_patch(E->truelist, S1->quad);
+    back_patch(E->falselist, S2->quad);
+    back_patch(S1->nextlist, S2->nextlist);
 
     clear_symbol_stack();
     --current_layer;
@@ -159,9 +159,9 @@ int While__while_LeftBrace_Expr_RightBrace_Statement_post_action(int* return_val
         S->quad += 2;
         S->nextlist += 2;
     }
-    backpatch(E->truelist, S->quad);
+    back_patch(E->truelist, S->quad);
     emit(OP_JMP, -1, -1, E->quad - S->nextlist);//E.quad对于S.nextlist的相对地址
-    backpatch(E->falselist, S->nextlist + 1);
+    back_patch(E->falselist, S->nextlist + 1);
 
     clear_symbol_stack();
     --current_layer;
@@ -189,7 +189,7 @@ int LogicalOr__LogicalOr_LogicalOR_LogicalAnd_post_action(int* return_values_ptr
     emit(OP_CODE::OP_LOGIC_OR, symbol_table_idx_1, symbol_table_idx_2, ret);
     */
 
-    //backpatch
+    //back_patch
     Node* E1 = Node::current_node->child_nodes_ptr[0];
     Node* E2 = Node::current_node->child_nodes_ptr[2];
     if (E1->truelist == -1)
@@ -206,14 +206,14 @@ int LogicalOr__LogicalOr_LogicalOR_LogicalAnd_post_action(int* return_values_ptr
         E2->falselist = insert(E2->nextlist + 1, OP_CODE::OP_JMP, -1, -1, 0);
         E2->nextlist += 2;
     }
-    backpatch(E1->falselist, E2->quad);
+    back_patch(E1->falselist, E2->quad);
     Node::current_node->truelist = merge(E1->truelist, E2->truelist);
     Node::current_node->falselist = E2->falselist;
     if (wont_be_backpatched())
     {
-        backpatch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
         emit(OP_CODE::OP_JMP, -1, -1, 2);
-        backpatch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
     }
 
     return ret;
@@ -239,7 +239,7 @@ int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_
     emit(OP_CODE::OP_LOGIC_AND, symbol_table_idx_1, symbol_table_idx_2, ret);
     */
 
-    //backpatch
+    //back_patch
     Node* E1 = Node::current_node->child_nodes_ptr[0];
     Node* E2 = Node::current_node->child_nodes_ptr[2];
     if (E1->truelist == -1)
@@ -256,14 +256,14 @@ int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_
         E2->falselist = insert(E2->nextlist + 1, OP_CODE::OP_JMP, -1, -1, 0);
         E2->nextlist += 2;
     }
-    backpatch(E1->truelist, E2->quad);
+    back_patch(E1->truelist, E2->quad);
     Node::current_node->truelist = E2->truelist;
     Node::current_node->falselist = merge(E1->falselist, E2->falselist);
     if (wont_be_backpatched())
     {
-        backpatch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
         emit(OP_CODE::OP_JMP, -1, -1, 2);
-        backpatch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
     }
 
     return ret;
@@ -298,9 +298,9 @@ int Item__LogicalNOT_Item_post_action(int* return_values_ptr)
     Node::current_node->falselist = E->truelist;
     if (wont_be_backpatched())
     {
-        backpatch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
         emit(OP_CODE::OP_JMP, -1, -1, 2);
-        backpatch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
     }
 
     return ret;

@@ -22,6 +22,48 @@ vector<StackEntry> analyse_symbol_stack;
 int current_layer = 0;
 vector<int> semantic_action_stack;
 
+// Semantic part
+// uses semantic_action_stack for arg passing
+Node* Node::current_node;
+int Node::semantic_action()
+{
+    Node::current_node = this;
+    int* return_values = new int[child_nodes_ptr.size()];
+    // fore action function
+    // ignore return value
+    this->quad = quaternion_sequence.size();
+    (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][0])(nullptr);
+
+    for (int i = 0; i < child_nodes_ptr.size(); ++i) {
+        if (!child_nodes_ptr[i]->is_terminal) {
+            return_values[i] = child_nodes_ptr[i]->semantic_action();
+        }
+    }
+
+    // post
+    Node::current_node = this;
+    if (this->child_nodes_ptr[0]->content == "(")
+    {
+        this->truelist = this->child_nodes_ptr[1]->truelist;
+        this->falselist = this->child_nodes_ptr[1]->falselist;
+    }
+    else if (this->child_nodes_ptr[0]->is_terminal)
+    {
+        this->truelist = -1;
+        this->falselist = -1;
+    }
+    else
+    {
+        this->truelist = this->child_nodes_ptr[0]->truelist;
+        this->falselist = this->child_nodes_ptr[0]->falselist;
+    }
+    int ret = (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][1])(return_values);
+    this->nextlist = quaternion_sequence.size();
+
+    delete[] return_values;
+    return ret;
+}
+
 void semantic_analysis(Node* root)
 {
 //    for (Nonterminal& nonterminal : Nonterminal::all_nonterminal_chars) {
@@ -56,7 +98,7 @@ void print_semantic_result()
         }
         switch (quaternion.op_code) {
             case OP_CALL:
-                cout << Function::function_table[quaternion.opr1].name  << "\t" << quaternion.opr2 << "\t-" << endl;
+                cout << Function::function_table[quaternion.opr1].name  << "\t" << quaternion.opr2 << "\t" << symbol_table[quaternion.result].content << endl;
                 break;
 
             case OP_JMP:
@@ -705,11 +747,11 @@ int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return
     }
 
     // all matched
-    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], return_values_ptr[2], -1};
-    quaternion_sequence.push_back(call_quaternion);
-
     // create a return temp var
     int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type);
+
+    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], return_values_ptr[2], return_temp_var};
+    quaternion_sequence.push_back(call_quaternion);
 
     return return_temp_var;
 }
@@ -719,11 +761,12 @@ int Call__Function_LeftBrace_RightBrace_post_function(int* return_values_ptr)
     if (!Function::function_table[return_values_ptr[0]].parameter_types.empty()) {
         Diagnose::printError(Node::current_node->offset, "Function " + Function::function_table[return_values_ptr[0]].name + " requires arguments.");
     }
-    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], 0, -1};
-    quaternion_sequence.push_back(call_quaternion);
 
     // create a return temp var
     int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type);
+
+    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], 0, return_temp_var};
+    quaternion_sequence.push_back(call_quaternion);
 
     return return_temp_var;
 }

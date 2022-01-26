@@ -8,7 +8,6 @@
 //
 
 #include "Node.h"
-#include "Include/Semantic.h"
 #include <queue>
 
 ofstream Node::fout;
@@ -93,45 +92,9 @@ void Node::free_memory() {
 
 // Semantic part
 // uses semantic_action_stack for arg passing
-Node* Node::current_node;
-int Node::semantic_action()
-{
-    Node::current_node = this;
-    int* return_values = new int[child_nodes_ptr.size()];
-    // fore action function
-    // ignore return value
-    this->quad = quaternion_sequence.size();
-    (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][0])(nullptr);
-
-    for (int i = 0; i < child_nodes_ptr.size(); ++i) {
-        if (!child_nodes_ptr[i]->is_terminal) {
-            return_values[i] = child_nodes_ptr[i]->semantic_action();
-        }
-    }
-
-    // post
-    Node::current_node = this;
-    if (this->child_nodes_ptr[0]->content == "(")
-    {
-        this->truelist = this->child_nodes_ptr[1]->truelist;
-        this->falselist = this->child_nodes_ptr[1]->falselist;
-    }
-    else if (this->child_nodes_ptr[0]->is_terminal)
-    {
-        this->truelist = -1;
-        this->falselist = -1;
-    }
-    else
-    {
-        this->truelist = this->child_nodes_ptr[0]->truelist;
-        this->falselist = this->child_nodes_ptr[0]->falselist;
-    }
-    int ret = (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][1])(return_values);
-    this->nextlist = quaternion_sequence.size();
-
-    delete[] return_values;
-    return ret;
-}
+// implemented in Semantic.cpp
+//Node* Node::current_node;
+//int Node::semantic_action()
 
 // visualize part
 void Node::printTreeInfo()
