@@ -1,0 +1,6 @@
+变量可以是数组
+心情好可以加
+
+Variable @ id
+Variable @ Variable [ Expr ]
+

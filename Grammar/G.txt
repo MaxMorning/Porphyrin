@@ -1,0 +1,121 @@
+Source @ Declarations
+
+Declarations @ Declarations Declaration
+Declarations @ Declaration
+
+Declaration @ VarDeclaration
+Declaration @ FunDeclaration
+
+VarDeclaration @ Type DeclaredVars ;
+
+DeclaredVars @ DeclaredVar , DeclaredVars
+DeclaredVars @ DeclaredVar
+
+DeclaredVar @ Variable
+DeclaredVar @ Variable = Expr
+
+Variable @ id
+
+FunDeclaration @ Type Function ( HereIsParameter ) Compound
+FunDeclaration @ Type Function ( ) Compound
+
+Type @ int
+Type @ float
+Type @ double
+Type @ void
+Type @ bool
+
+
+Function @ id
+
+HereIsParameter @ void
+HereIsParameter @ Parameters
+
+Parameters @ Parameter , Parameters
+Parameters @ Parameter
+
+Parameter @ Type Variable
+
+
+
+Statements @ Statement Statements
+Statements @ Statement
+
+Statement @ VarDeclaration
+Statement @ Expression
+Statement @ If
+Statement @ While
+Statement @ Return
+Statement @ Compound
+Statement @ ;
+
+Expression @ Expr ;
+
+If @ if ( Expr ) Statement
+If @ if ( Expr ) Statement else Statement
+
+While @ while ( Expr ) Statement
+
+Return @ return Expr ;
+Return @ return ;
+
+Compound @ { }
+Compound @ { Statements }
+
+
+
+Expr @ Comma
+
+Comma @ Comma , Assignment
+Comma @ Assignment
+
+Assignment @ LogicalOr = Assignment
+Assignment @ LogicalOr
+
+LogicalOr @ LogicalOr || LogicalAnd
+LogicalOr @ LogicalAnd
+
+LogicalAnd @ LogicalAnd && Comparison
+LogicalAnd @ Comparison
+
+Comparison @ Comparison CmpSymbol Addition
+Comparison @ Addition
+
+CmpSymbol @ ==
+CmpSymbol @ >
+CmpSymbol @ >=
+CmpSymbol @ <
+CmpSymbol @ <=
+CmpSymbol @ !=
+
+Addition @ Addition AddSymbol Multiplication
+Addition @ Multiplication
+
+AddSymbol @ +
+AddSymbol @ -
+
+Multiplication @ Multiplication MulSymbol Item
+Multiplication @ Item
+
+MulSymbol @ *
+MulSymbol @ /
+
+Item @ ! Item
+Item @ - Item
+Item @ ( Expr )
+Item @ Variable
+Item @ Call
+Item @ Num
+
+Call @ Function ( HereIsArgument )
+Call @ Function ( )
+
+HereIsArgument @ void
+HereIsArgument @ Arguments
+
+Arguments @ Argument , Arguments
+Arguments @ Argument
+
+Argument @ Expr
+
+Num @ num
