@@ -234,9 +234,15 @@ Lexicon::Lexicon(char* lexical_buffer, size_t buffer_size, int processing_idx) {
             int dot_cnt = 0;
             for (int i = 0; i < buffer_size; ++i) {
                 if (!is_digit(lexical_buffer[i])) {
-                    // todo throw error: INVALID_NUMBER_FORMAT
-                    Diagnose::printError(offset, "Invalid number format.");
-                    exit(-1);
+                    if (i == buffer_size - 1 && (lexical_buffer[i] == 'f' || lexical_buffer[i] == 'F')) {
+                        // format eg. 4.42f
+                        break;
+                    }
+                    else {
+                        // todo throw error: INVALID_NUMBER_FORMAT
+                        Diagnose::printError(offset, "Invalid number format.");
+                        exit(-1);
+                    }
                 }
                 else if (lexical_buffer[i] == '.') {
                     ++dot_cnt;

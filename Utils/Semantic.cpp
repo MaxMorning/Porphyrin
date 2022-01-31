@@ -118,6 +118,12 @@ void print_semantic_result()
                 cout << quaternion.opr1 << "\t-\t" << symbol_table[quaternion.result].content << endl;
                 break;
 
+            case OP_LI_FLOAT: {
+                float float_num = *((float *) (&quaternion.opr1));
+                cout << float_num << "\t-\t" << symbol_table[quaternion.result].content << endl;
+                break;
+            }
+
             case OP_LI_DOUBLE: {
                 double double_num;
                 int *int_ptr = (int *) &double_num;
@@ -1059,19 +1065,30 @@ int Num__num_post_action(int* return_values_ptr)
     arr[1] = *((int *)&num_double + 1);
     double new_num_double = *((double *)arr);
     */
-    double num = stod(str);
-    int arr[2];
-    arr[0] = *((int *)&num);
-    arr[1] = *((int *)&num + 1);
+
 
     int ret;
     if(is_INT)
     {
+        int num = stoi(str);
         ret = get_temp_symbol(DT_INT);
-        emit(OP_LI_INT, (int)num, -1, ret);
+        emit(OP_LI_INT, num, -1, ret);
     }
-    else
+    else if (str.back() == 'f' || str.back() == 'F')
     {
+        float num = stof(str);
+        int int_num = *((int*)&num);
+
+        ret = get_temp_symbol(DT_FLOAT);
+        emit(OP_LI_FLOAT, int_num, -1, ret);
+
+    }
+    else {
+        double num = stod(str);
+        int arr[2];
+        arr[0] = *((int *)&num);
+        arr[1] = *((int *)&num + 1);
+
         ret = get_temp_symbol(DT_DOUBLE);
         emit(OP_LI_DOUBLE, arr[0], arr[1], ret);
     }
