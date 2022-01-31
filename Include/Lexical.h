@@ -54,7 +54,7 @@ enum TYPE_ENUM {
 #define KW_NUMBER       (-2)
 #define KW_VAR_FUN      (-3)
 
-#define KEYWORD_TYPE_CNT 9
+#define KEYWORD_TYPE_CNT 11
 // mapping: -idx - 4
 const string KW_TYPES[] = {
         "else",
@@ -65,7 +65,9 @@ const string KW_TYPES[] = {
         "double",
         "return",
         "void",
-        "while"
+        "while",
+        "true",
+        "false"
 };
 
 struct Lexicon {

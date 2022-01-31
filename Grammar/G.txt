@@ -119,3 +119,5 @@ Arguments @ Argument
 Argument @ Expr
 
 Num @ num
+Num @ true
+Num @ false

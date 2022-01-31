@@ -155,6 +155,8 @@ int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_
 int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr);
 
 int Num__num_post_action(int* return_values_ptr);
+int Num__true_post_action(int* return_values_ptr);
+int Num__false_post_action(int* return_values_ptr);
 
 
 ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
@@ -558,8 +560,8 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 // Num
                 {
                         {always_return_0, Num__num_post_action},
-                        {always_return_0, always_return_0},
-                        {always_return_0, always_return_0},
+                        {always_return_0, Num__true_post_action},
+                        {always_return_0, Num__false_post_action},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},

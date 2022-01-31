@@ -1094,3 +1094,19 @@ int Num__num_post_action(int* return_values_ptr)
     }
     return ret;
 }
+
+int Num__true_post_action(int* return_values_ptr)
+{
+    int ret = get_temp_symbol(DT_BOOL);
+    emit(OP_LI_BOOL, true, -1, ret);
+
+    return ret;
+}
+
+int Num__false_post_action(int* return_values_ptr)
+{
+    int ret = get_temp_symbol(DT_BOOL);
+    emit(OP_LI_BOOL, false, -1, ret);
+
+    return ret;
+}
