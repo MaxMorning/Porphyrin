@@ -267,7 +267,7 @@ void write_semantic_result();
 // action function definition
 // return value ptr is nullptr for fore action
 
-extern vector<int> semantic_action_stack; // for arg passing
+//extern vector<int> semantic_action_stack; // for arg passing
 
 typedef int (*ActionFunction)(int*);
 

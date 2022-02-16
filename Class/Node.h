@@ -14,15 +14,30 @@
 #include "Nonterminal.h"
 #include <vector>
 #include <fstream>
+#include <unordered_map>
 
 
 using namespace std;
+
+#define boolVarUsageAttr                (-1)
+#define boolFunctionNameUsageAttr       (-2)
+#define boolTypeUsageAttr               (-3)
+
+#define boolVarUsage_Declare            0
+#define boolVarUsage_Reference          1
+
+#define boolFunctionNameUsage_Declare   0
+#define boolFunctionNameUsage_Call      1
+
+#define boolTypeUsage_FuncReturn        0
+#define boolTypeUsage_VarDeclare        1
 
 class Node : public Character {
 public:
     Node* parent;
     vector<Node*> child_nodes_ptr;
     string content; // only valid in terminal char, the name of var / func or symbols(==, etc.)
+    unordered_map<int, int> attributes;
 
     int non_terminal_idx;
     int reduction_idx;
@@ -43,6 +58,8 @@ public:
     int quad, nextlist;
     int truelist, falselist;
     int semantic_action();
+
+    int get_attribute_value(int key);
 
     // visualize part
     int bias = 0;

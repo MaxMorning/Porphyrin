@@ -269,3 +269,14 @@ void Node::adjustTree(int offset)
     this->x += offset;
     //cout << "\"" << this->content << "\"" << "右移" << offset << endl;
 }
+
+int Node::get_attribute_value(int key) {
+    auto iter = attributes.find(key);
+    if (iter != attributes.end()) {
+        return iter->second;
+    }
+    else {
+        assert(false);
+        exit(-5);
+    }
+}

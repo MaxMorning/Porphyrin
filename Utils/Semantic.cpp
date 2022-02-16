@@ -20,7 +20,7 @@ vector<Quaternion> quaternion_sequence;
 vector<SymbolEntry> symbol_table;
 vector<StackEntry> analyse_symbol_stack;
 int current_layer = 0;
-vector<int> semantic_action_stack;
+//vector<int> semantic_action_stack;
 
 // Semantic part
 // uses semantic_action_stack for arg passing
@@ -204,6 +204,12 @@ void write_semantic_result()
                 break;
             }
 
+            case OP_LI_FLOAT: {
+                float float_num = *((float*)(&quaternion.opr1));
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << float_num << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbol_table[quaternion.result].content << endl;
+                break;
+            }
+
             default:
                 fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content) << endl;
                 break;
@@ -374,7 +380,8 @@ static DATA_TYPE_ENUM current_data_type;
 
 int VarDeclaration__Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
 {
-    semantic_action_stack.push_back(0); // means Type is define var, not function return value
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
+//    semantic_action_stack.push_back(0); // means Type is define var, not function return value
     return -1;
 }
 
@@ -393,7 +400,8 @@ int VarDeclaration__Type_DeclaredVars_Semicolon_post_action(int* return_values_p
 
 int DeclaredVar__Variable_fore_action(int* return_values_ptr)
 {
-    semantic_action_stack.push_back(0); // means create a new var
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+//    semantic_action_stack.push_back(0); // means create a new var
     return 0;
 }
 
@@ -406,7 +414,8 @@ int DeclaredVar__Variable_post_action(int* return_values_ptr)
 
 int DeclaredVar__Variable_Assignment_Expr_fore_action(int* return_values_ptr)
 {
-    semantic_action_stack.push_back(0); // means create a new var
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+//    semantic_action_stack.push_back(0); // means create a new var
     return 0;
 }
 
@@ -445,8 +454,11 @@ int FunDeclaration__Type_Function_LeftBrace_HereIsParameter_RightBrace_LeftCurly
     new_function.entry_address = quaternion_sequence.size();
     Function::function_table.push_back(new_function);
 
-    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
-    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
+//    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
+    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
+
+//    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
 
     ++current_layer;
     return 0;
@@ -479,8 +491,11 @@ int FunDeclaration__Type_Function_LeftBrace_RightBrace_LeftCurlyBrace_Statements
     new_function.entry_address = quaternion_sequence.size();
     Function::function_table.push_back(new_function);
 
-    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
-    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
+//    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
+    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
+
+//    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
 
     Function::function_table.back().parameter_types.clear();
     ++current_layer;
@@ -501,11 +516,12 @@ int FunDeclaration__Type_Function_LeftBrace_RightBrace_LeftCurlyBrace_Statements
 
 int Type__int_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 1) {
+    if (arg == boolTypeUsage_FuncReturn) {
         // function return type
         Function::function_table.back().return_data_type = DT_INT;
     }
@@ -517,11 +533,12 @@ int Type__int_post_function(int* return_values_ptr)
 
 int Type__float_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 1) {
+    if (arg == boolTypeUsage_FuncReturn) {
         // function return type
         Function::function_table.back().return_data_type = DT_FLOAT;
     }
@@ -533,11 +550,12 @@ int Type__float_post_function(int* return_values_ptr)
 
 int Type__void_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 1) {
+    if (arg == boolTypeUsage_FuncReturn) {
         // function return type
         Function::function_table.back().return_data_type = DT_VOID;
     }
@@ -549,11 +567,12 @@ int Type__void_post_function(int* return_values_ptr)
 
 int Type__double_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 1) {
+    if (arg == boolTypeUsage_FuncReturn) {
         // function return type
         Function::function_table.back().return_data_type = DT_DOUBLE;
     }
@@ -565,11 +584,12 @@ int Type__double_post_function(int* return_values_ptr)
 
 int Type__bool_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 1) {
+    if (arg == boolTypeUsage_FuncReturn) {
         // function return type
         Function::function_table.back().return_data_type = DT_BOOL;
     }
@@ -581,11 +601,12 @@ int Type__bool_post_function(int* return_values_ptr)
 
 int Function__id_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+//    int arg = semantic_action_stack.back();
+    int arg = Node::current_node->get_attribute_value(boolFunctionNameUsageAttr);
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 0) {
+    if (arg == boolFunctionNameUsage_Declare) {
         // it is declare
         Function::function_table.back().name = Node::current_node->child_nodes_ptr[0]->content;
         return 0;
@@ -645,9 +666,11 @@ int Parameters__Parameter_post_function(int* return_values_ptr)
 }
 int Parameter__Type_Variable_fore_function(int* return_values_ptr)
 {
-    semantic_action_stack.push_back(0); // means variable is creating
-    semantic_action_stack.push_back(0);  // means Type is define var, not function return value
+//    semantic_action_stack.push_back(0); // means variable is creating
+    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
 
+//    semantic_action_stack.push_back(0);  // means Type is define var, not function return value
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
     return 0;
 }
 
@@ -663,11 +686,12 @@ int Parameter__Type_Variable_post_function(int* return_values_ptr)
 
 int Variable__id_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 0) {
+    if (arg == boolVarUsage_Declare) {
         // add new var
         SymbolEntry new_symbol;
         new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
@@ -712,11 +736,12 @@ int Variable__id_post_function(int* return_values_ptr)
 
 int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(int* return_values_ptr)
 {
-    int arg = semantic_action_stack.back();
-    assert(!semantic_action_stack.empty());
-    semantic_action_stack.pop_back();
+    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
+//    int arg = semantic_action_stack.back();
+//    assert(!semantic_action_stack.empty());
+//    semantic_action_stack.pop_back();
 
-    if (arg == 0) {
+    if (arg == boolVarUsage_Declare) {
         // add new var
         SymbolEntry new_symbol;
         new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
@@ -760,8 +785,9 @@ int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(i
 
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr)
 {
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Call);
     // push 1 into stack means call a function
-    semantic_action_stack.push_back(1);
+//    semantic_action_stack.push_back(1);
 
     return 0;
 }
@@ -858,7 +884,8 @@ int Arguments__Argument_post_function(int* return_values_ptr)
 
 int Argument__Variable_fore_function(int* return_values_ptr)
 {
-    semantic_action_stack.push_back(1); // means use var
+    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Reference); // means use var
+//    semantic_action_stack.push_back(1); // means use var
     return 0;
 }
 
