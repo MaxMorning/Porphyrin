@@ -218,6 +218,7 @@ struct SymbolEntry {
     bool is_temp;
     bool is_const;
     DATA_TYPE_ENUM data_type;
+    bool is_array;
     int function_index; // -1 means global symbols
     bool is_initial;
     bool is_used;

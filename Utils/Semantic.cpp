@@ -673,6 +673,7 @@ int Variable__id_post_function(int* return_values_ptr)
         new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
         new_symbol.is_temp = false;
         new_symbol.is_const = false;
+        new_symbol.is_array = false;
         new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
         new_symbol.is_used = false;
         new_symbol.is_initial = false;
@@ -707,6 +708,54 @@ int Variable__id_post_function(int* return_values_ptr)
         return -2;
     }
 
+}
+
+int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(int* return_values_ptr)
+{
+    int arg = semantic_action_stack.back();
+    assert(!semantic_action_stack.empty());
+    semantic_action_stack.pop_back();
+
+    if (arg == 0) {
+        // add new var
+        SymbolEntry new_symbol;
+        new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
+        new_symbol.is_temp = false;
+        new_symbol.is_const = false;
+        new_symbol.is_array = true;
+        new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
+        new_symbol.is_used = false;
+        new_symbol.is_initial = false;
+        new_symbol.node_ptr = Node::current_node->child_nodes_ptr[0];
+        new_symbol.last_use_offset = new_symbol.node_ptr->offset;
+
+        symbol_table.push_back(new_symbol);
+
+        return symbol_table.size() - 1;
+    }
+    else {
+        // find var index in stack
+        int searching_idx = analyse_symbol_stack.size() - 1;
+        while (searching_idx >= 0) {
+            if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
+                // find
+                SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
+//                if (!symbolEntry.is_temp && !symbolEntry.is_initial) {
+//                    Diagnose::printWarning(symbolEntry.node_ptr->offset, "Variable " + symbolEntry.content + " used without initialized.");
+//                }
+                symbolEntry.is_used = true;
+                symbolEntry.last_use_offset = Node::current_node->offset;
+                return analyse_symbol_stack[searching_idx].symbol_index;
+            }
+            --searching_idx;
+        }
+
+        // not found
+        // todo throw error : SYMBOL NOT FOUND
+        Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
+        exit(-1);
+        return -2;
+    }
 }
 
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr)

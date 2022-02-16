@@ -65,6 +65,7 @@ int Parameter__Type_Variable_post_function(int* return_values_ptr);
 
 ActionFunction Variable__id_fore_function = always_return_0;
 int Variable__id_post_function(int* return_values_ptr);
+int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(int* return_values_ptr);
 
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr);
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_values_ptr);
