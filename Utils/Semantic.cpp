@@ -23,7 +23,6 @@ int current_layer = 0;
 //vector<int> semantic_action_stack;
 
 // Semantic part
-// uses semantic_action_stack for arg passing
 Node* Node::current_node;
 int Node::semantic_action()
 {
@@ -133,6 +132,16 @@ void print_semantic_result()
                 break;
             }
 
+//            case OP_FETCH_BOOL:
+//            case OP_FETCH_INT:
+//            case OP_FETCH_FLOAT:
+//            case OP_FETCH_DOUBLE:
+//            case OP_ARRAY_STORE:
+//            {
+//                cout << symbol_table[quaternion.opr1].content << "\t" << quaternion.opr2 << "\t" << symbol_table[quaternion.result].content << endl;
+//                break;
+//            };
+
             default:
                 cout << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << "\t" << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << "\t" << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content) << endl;
                 break;
@@ -144,7 +153,7 @@ void print_semantic_result()
     cout << "Symbol table" << endl;
     cnt = 0;
     for (SymbolEntry& symbolEntry : symbol_table) {
-        cout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << symbolEntry.content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[symbolEntry.data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_temp ? "Temp" : "Declare") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) <<
+        cout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << symbolEntry.content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[symbolEntry.data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_array ? "Array" : "Scalar") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbolEntry.memory_size << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_temp ? "Temp" : "Declare") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) <<
              (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated")   << endl;
         ++cnt;
     }
@@ -210,6 +219,16 @@ void write_semantic_result()
                 break;
             }
 
+//            case OP_FETCH_BOOL:
+//            case OP_FETCH_INT:
+//            case OP_FETCH_FLOAT:
+//            case OP_FETCH_DOUBLE:
+//            case OP_ARRAY_STORE:
+//            {
+//                fout << symbol_table[quaternion.opr1].content << "\t" << quaternion.opr2 << "\t" << symbol_table[quaternion.result].content << endl;
+//                break;
+//            };
+
             default:
                 fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content) << endl;
                 break;
@@ -244,14 +263,16 @@ void write_semantic_result()
 }
 
 unsigned int temp_symbol_cnt = 0;
-int get_temp_symbol(DATA_TYPE_ENUM data_type)
+int get_temp_symbol(DATA_TYPE_ENUM data_type, bool is_const)
 {
     SymbolEntry temp_symbol;
     temp_symbol.content = "temp_" + to_string(temp_symbol_cnt);
     ++temp_symbol_cnt;
     temp_symbol.is_temp = true;
-    temp_symbol.is_const = true;
+    temp_symbol.is_const = is_const;
     temp_symbol.data_type = data_type;
+    temp_symbol.memory_size = BASE_DATA_TYPE_SIZE[(int)data_type];
+    temp_symbol.is_array = false;
     temp_symbol.function_index = Function::function_table.size() - 1;
     temp_symbol.is_used = false;
     temp_symbol.is_initial = true;
@@ -284,7 +305,7 @@ int auto_cast(int src_index, DATA_TYPE_ENUM dst_data_type)
         if (symbol_table[src_index].data_type > dst_data_type) {
             Diagnose::printWarning(symbol_table[src_index].last_use_offset, "Narrow conversion from " + DATA_TYPE_TOKEN[symbol_table[src_index].data_type] + " to " + DATA_TYPE_TOKEN[dst_data_type] + '.');
         }
-        int new_symbol_idx = get_temp_symbol(dst_data_type);
+        int new_symbol_idx = get_temp_symbol(dst_data_type, symbol_table[src_index].is_const);
         quaternion_sequence.push_back(Quaternion{cast_op, src_index, -1, new_symbol_idx});
         return new_symbol_idx;
     }
@@ -294,7 +315,7 @@ int Type_Conversion(DATA_TYPE_ENUM type_from, DATA_TYPE_ENUM type_to, int symbol
 {
     if(type_from == type_to)        // no need to converse
         return symbol_table_idx;
-    int ret = get_temp_symbol(type_to);
+    int ret = get_temp_symbol(type_to, symbol_table[symbol_table_idx].is_const);
 
     if (type_from > type_to) {
         Diagnose::printWarning(symbol_table[symbol_table_idx].last_use_offset, "Narrow conversion from " + DATA_TYPE_TOKEN[type_from] + " to " + DATA_TYPE_TOKEN[type_to] + '.');
@@ -407,7 +428,8 @@ int DeclaredVar__Variable_fore_action(int* return_values_ptr)
 
 int DeclaredVar__Variable_post_action(int* return_values_ptr)
 {
-    symbol_table[return_values_ptr[0]].data_type = current_data_type;
+//    symbol_table[return_values_ptr[0]].data_type = current_data_type;
+//    symbol_table[return_values_ptr[0]].memory_size = Node::current_node->child_nodes_ptr[0]->get_attribute_value(intMemorySizeAttr);
     analyse_symbol_stack.push_back(StackEntry{return_values_ptr[0], current_layer});
     return return_values_ptr[0];
 }
@@ -422,6 +444,13 @@ int DeclaredVar__Variable_Assignment_Expr_fore_action(int* return_values_ptr)
 int DeclaredVar__Variable_Assignment_Expr_post_action(int* return_values_ptr)
 {
     symbol_table[return_values_ptr[0]].data_type = current_data_type;
+    if (!symbol_table[return_values_ptr[0]].is_array) {
+        symbol_table[return_values_ptr[0]].memory_size = BASE_DATA_TYPE_SIZE[(int) current_data_type]; // assign to array is not supported
+    }
+    else {
+        Diagnose::printError(Node::current_node->offset, "Assign to array is not supported");
+    }
+
     symbol_table[return_values_ptr[0]].is_initial = true;
     analyse_symbol_stack.push_back(StackEntry{return_values_ptr[0], current_layer});
 
@@ -678,7 +707,8 @@ int Parameter__Type_Variable_post_function(int* return_values_ptr)
 {
     // add new parameter
     // write type to the top of symbol table
-    symbol_table[return_values_ptr[1]].data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
+//    symbol_table[return_values_ptr[1]].data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
+//    symbol_table[return_values_ptr[1]].memory_size = Node::current_node->child_nodes_ptr[1]->get_attribute_value(intMemorySizeAttr);
     analyse_symbol_stack.push_back(StackEntry{return_values_ptr[1], current_layer});
 
     return symbol_table.size() - 1;
@@ -698,6 +728,10 @@ int Variable__id_post_function(int* return_values_ptr)
         new_symbol.is_temp = false;
         new_symbol.is_const = false;
         new_symbol.is_array = false;
+        new_symbol.data_type = current_data_type;
+        new_symbol.memory_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
+//        Node::current_node->attributes.emplace(intMemorySizeAttr, BASE_DATA_TYPE_SIZE[(int)current_data_type]);
+
         new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
         new_symbol.is_used = false;
         new_symbol.is_initial = false;
@@ -734,53 +768,210 @@ int Variable__id_post_function(int* return_values_ptr)
 
 }
 
-int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(int* return_values_ptr)
+int Variable__id_Indices_fore_function(int* return_values_ptr)
 {
     int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
 
     if (arg == boolVarUsage_Declare) {
-        // add new var
+        // declare a array
+        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Declare);
+    }
+    else {
+        // get a reference of a array
+        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Reference);
+    }
+
+    return 0;
+}
+
+void build_array_index_vector(Node* variable_node, vector<int>& index_vector)
+{
+    Node* current_index_node_pointer = variable_node->child_nodes_ptr[1];
+
+    while (true) {
+        index_vector.push_back(current_index_node_pointer->get_attribute_value(intIndicesSizeIndexAttr));
+        if (current_index_node_pointer->child_nodes_ptr.size() == 4) {
+            current_index_node_pointer = current_index_node_pointer->child_nodes_ptr[3];
+        }
+        else {
+            break;
+        }
+    }
+}
+
+// this function will generate quaternions to calc the offset
+// return the temp var which is offset
+//vector<Quaternion> offset_calc_sequence;
+int calc_array_element_offset(vector<int> index_vector, vector<int> length_vector)
+{
+    assert(index_vector.size() == length_vector.size());
+
+    int new_var = get_temp_symbol(DT_INT, false);
+
+    quaternion_sequence.push_back(Quaternion{OP_ASSIGNMENT, index_vector[0], -1, new_var});
+
+    for (int i = 0; i < length_vector.size() - 1; ++i) {
+        quaternion_sequence.push_back(Quaternion{OP_MULTI_INT, new_var, length_vector[i + 1], new_var});
+
+        quaternion_sequence.push_back(Quaternion{OP_ADD_INT, new_var, index_vector[i + 1], new_var});
+    }
+
+//    int calc_result = index_vector.back();
+//
+//    for (int i = length_vector.size() - 1; i >= 1; --i) {
+//        calc_result += length_vector[i] * index_vector[i - 1];
+//    }
+
+    return new_var;
+}
+
+int Variable__id_Indices_post_function(int* return_values_ptr)
+{
+    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
+
+    if (arg == boolVarUsage_Declare) {
+        // declare a array
         SymbolEntry new_symbol;
         new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
         new_symbol.is_temp = false;
         new_symbol.is_const = false;
         new_symbol.is_array = true;
+
         new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
         new_symbol.is_used = false;
         new_symbol.is_initial = false;
         new_symbol.node_ptr = Node::current_node->child_nodes_ptr[0];
         new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
+        // build index vector
+        build_array_index_vector(Node::current_node, new_symbol.index_record);
+
+        // calc memory size
+//        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
+//        for (int index_of_index : new_symbol.index_record) {
+//            current_size *= symbol_table[index_of_index].value.int_value;
+//        }
+
+        new_symbol.data_type = current_data_type;
+//        new_symbol.memory_size = current_size;
+        new_symbol.memory_size = -1; // the size of array will be calculated in DAG optimization part
+
         symbol_table.push_back(new_symbol);
 
         return symbol_table.size() - 1;
     }
     else {
-        // find var index in stack
+        // reference an element of an array
         int searching_idx = analyse_symbol_stack.size() - 1;
         while (searching_idx >= 0) {
             if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
-                // find
+                // find array
                 SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
-//                if (!symbolEntry.is_temp && !symbolEntry.is_initial) {
-//                    Diagnose::printWarning(symbolEntry.node_ptr->offset, "Variable " + symbolEntry.content + " used without initialized.");
-//                }
+
+                // check index valid & calc offset
+                vector<int> indices_vector;
+                build_array_index_vector(Node::current_node, indices_vector);
+
+                if (indices_vector.size() != symbolEntry.index_record.size()) {
+                    Diagnose::printError(Node::current_node->offset, "Invalid index/indices to fetch an element from array.");
+                }
+
+                int offset_calc_start_index = quaternion_sequence.size();
+                int memory_offset_var_index = calc_array_element_offset(indices_vector, symbolEntry.index_record);
+                int offset_calc_end_index = quaternion_sequence.size();
+
                 symbolEntry.is_used = true;
                 symbolEntry.last_use_offset = Node::current_node->offset;
-                return analyse_symbol_stack[searching_idx].symbol_index;
+
+                int array_index = analyse_symbol_stack[searching_idx].symbol_index;
+                int new_symbol = get_temp_symbol(symbolEntry.data_type, false);
+                symbol_table[new_symbol].is_array = true; // when a symbol is both array and temp, means it is a reference of an element, maybe assigned
+
+                // index_record[0..1] represent the quaternion which calc offset
+                symbol_table[new_symbol].value.int_value = quaternion_sequence.size();
+                symbol_table[new_symbol].index_record.push_back(offset_calc_start_index);
+                symbol_table[new_symbol].index_record.push_back(offset_calc_end_index);
+
+                Quaternion fetch_quaternion{OP_INVALID, array_index, memory_offset_var_index, new_symbol};
+                switch (symbolEntry.data_type) {
+                    case DT_BOOL:
+                        fetch_quaternion.op_code = OP_FETCH_BOOL;
+                        break;
+
+                    case DT_INT:
+                        fetch_quaternion.op_code = OP_FETCH_INT;
+                        break;
+
+                    case DT_FLOAT:
+                        fetch_quaternion.op_code = OP_FETCH_FLOAT;
+                        break;
+
+                    case DT_DOUBLE:
+                        fetch_quaternion.op_code = OP_FETCH_DOUBLE;
+                        break;
+                }
+                quaternion_sequence.push_back(fetch_quaternion);
+
+                return new_symbol;
             }
             --searching_idx;
         }
 
         // not found
-        // todo throw error : SYMBOL NOT FOUND
         Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
         exit(-1);
         return -2;
     }
+}
+
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* return_values_ptr)
+{
+    Node::current_node->child_nodes_ptr[3]->attributes.emplace(boolIndicesUsageAttr, Node::current_node->get_attribute_value(boolIndicesUsageAttr));
+    return 0;
+}
+
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(int* return_values_ptr)
+{
+    int arg = Node::current_node->get_attribute_value(boolIndicesUsageAttr);
+
+    SymbolEntry& symbol = symbol_table[return_values_ptr[1]];
+
+    if (arg == boolIndicesUsage_Declare) {
+        // in declaration
+
+        bool is_const_expr = symbol.is_const;
+        if (is_const_expr) {
+            if (symbol.data_type != DT_INT) {
+                Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-integer expression.");
+            }
+            else {
+                int expr_value = symbol.value.int_value;
+                if (expr_value <= 0) {
+                    Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-positive expression.");
+                }
+                else {
+                    Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
+                }
+            }
+        }
+        else {
+            Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-const expression.");
+        }
+    }
+    else {
+        // in reference
+        if (symbol.data_type == DT_FLOAT || symbol.data_type == DT_DOUBLE || symbol.data_type == DT_BOOL || symbol.data_type == DT_VOID || symbol.data_type == DT_NOT_DECIDED) {
+            Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot access an array with a non-integer expression.");
+        }
+        else {
+            Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
+        }
+    }
+}
+
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr)
+{
+    return Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(return_values_ptr);
 }
 
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr)
@@ -819,7 +1010,7 @@ int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return
             }
 
             // can be auto cast
-            int new_symbol_idx = get_temp_symbol(current_function.parameter_types[i]);
+            int new_symbol_idx = get_temp_symbol(current_function.parameter_types[i], symbol_table[current_quaternion.opr1].is_const);
             quaternion_sequence.insert(quaternion_sequence.end() - i - 1 - offset, Quaternion{cast_op, current_quaternion.opr1, -1, new_symbol_idx});
             assert(quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].op_code == OP_PAR);
             quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].opr1 = new_symbol_idx;
@@ -829,7 +1020,7 @@ int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return
 
     // all matched
     // create a return temp var
-    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type);
+    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type, false);
 
     Quaternion call_quaternion{OP_CALL, return_values_ptr[0], return_values_ptr[2], return_temp_var};
     quaternion_sequence.push_back(call_quaternion);
@@ -844,7 +1035,7 @@ int Call__Function_LeftBrace_RightBrace_post_function(int* return_values_ptr)
     }
 
     // create a return temp var
-    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type);
+    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type, false);
 
     Quaternion call_quaternion{OP_CALL, return_values_ptr[0], 0, return_temp_var};
     quaternion_sequence.push_back(call_quaternion);
@@ -906,7 +1097,7 @@ int Comparison__Comparison_CmpSymbol_Addition_post_action(int* return_values_ptr
         Diagnose::printError(Node::current_node->offset, "Illegal Void Calculation.");
         exit(-1);
     }
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, symbol_table[return_values_ptr[0]].is_const && symbol_table[return_values_ptr[2]].is_const);
     DATA_TYPE_ENUM dt_type = (DATA_TYPE_ENUM) max(type1, type2);
     symbol_table_idx_1 = Type_Conversion(type1, dt_type, return_values_ptr[0]);
     symbol_table_idx_2 = Type_Conversion(type2, dt_type, return_values_ptr[2]);
@@ -961,7 +1152,7 @@ int Addition__Addition_AddSymbol_Multiplication_post_action(int* return_values_p
     DATA_TYPE_ENUM dt_type = (DATA_TYPE_ENUM) max(type1, type2);
     symbol_table_idx_1 = Type_Conversion(type1, dt_type, return_values_ptr[0]);
     symbol_table_idx_2 = Type_Conversion(type2, dt_type, return_values_ptr[2]);
-    ret = get_temp_symbol(dt_type);
+    ret = get_temp_symbol(dt_type, symbol_table[symbol_table_idx_1].is_const && symbol_table[symbol_table_idx_2].is_const);
     op_type = Op_Type_Conversion(op_type, dt_type);
     emit(op_type, symbol_table_idx_1, symbol_table_idx_2, ret);
     return ret;
@@ -993,7 +1184,7 @@ int Multiplication__Multiplication_MulSymbol_Item_post_action(int* return_values
     DATA_TYPE_ENUM dt_type = (DATA_TYPE_ENUM) max(type1, type2);
     symbol_table_idx_1 = Type_Conversion(type1, dt_type, return_values_ptr[0]);
     symbol_table_idx_2 = Type_Conversion(type2, dt_type, return_values_ptr[2]);
-    ret = get_temp_symbol(dt_type);
+    ret = get_temp_symbol(dt_type, symbol_table[return_values_ptr[0]].is_const && symbol_table[return_values_ptr[2]].is_const);
     op_type = Op_Type_Conversion(op_type, dt_type);
     emit(op_type, symbol_table_idx_1, symbol_table_idx_2, ret);
     return ret;
@@ -1011,7 +1202,7 @@ int MulSymbol__DIV_post_action(int* return_values_ptr)
 
 int Item__Neg_Item_post_action(int* return_values_ptr)
 {
-    int ret = get_temp_symbol(symbol_table[return_values_ptr[1]].data_type);
+    int ret = get_temp_symbol(symbol_table[return_values_ptr[1]].data_type, symbol_table[return_values_ptr[1]].is_const);
     emit(OP_NEG, return_values_ptr[1], -1, ret);
     return ret;
 }
@@ -1032,6 +1223,10 @@ int Assignment__LogicalOr_ASSIGNMENT_Assignment_post_action(int* return_values_p
         Diagnose::printError(Node::current_node->offset, "Expression is not assignable.");
     }
 
+    if (!symbol_table[return_values_ptr[0]].is_array && symbol_table[return_values_ptr[0]].is_temp) {
+        Diagnose::printError(Node::current_node->offset, "Lvalue required as left operand of assignment.");
+    }
+
     int symbol_table_idx_1 = return_values_ptr[0];
     symbol_table[symbol_table_idx_1].is_initial = true;
     int symbol_table_idx_2 = return_values_ptr[2];
@@ -1044,38 +1239,66 @@ int Assignment__LogicalOr_ASSIGNMENT_Assignment_post_action(int* return_values_p
             Diagnose::printError(Node::current_node->offset, "Can not cast " + DATA_TYPE_TOKEN[type1] + " from " + DATA_TYPE_TOKEN[type2] + '.');
             exit(-1);
         }
-        emit(OP_CODE::OP_ASSIGNMENT, cast_result_index, -1, symbol_table_idx_1);
-    }
-    else {
-        emit(OP_CODE::OP_ASSIGNMENT, symbol_table_idx_2, -1, symbol_table_idx_1);
-    }
-    return symbol_table_idx_1;
-}
 
-int Left__LeftBrace_Left_ASSIGNMENT_Expr_RightBrace_post_action(int* return_values_ptr)
-{
-    int symbol_table_idx_1 = return_values_ptr[1];
-    int symbol_table_idx_2 = return_values_ptr[3];
-    DATA_TYPE_ENUM type1 = symbol_table[symbol_table_idx_1].data_type;
-    DATA_TYPE_ENUM type2 = symbol_table[symbol_table_idx_2].data_type;
-    if (type1 != type2) {
-        // need cast
-        int cast_result_index = auto_cast(symbol_table_idx_2, type1);
-        if (cast_result_index < 0) {
-            Diagnose::printError(Node::current_node->offset, "Can not cast " + DATA_TYPE_TOKEN[type1] + " from " + DATA_TYPE_TOKEN[type2] + '.');
-            exit(-1);
+        if (symbol_table[symbol_table_idx_1].is_array && symbol_table[symbol_table_idx_1].is_temp) {
+            // assign to array elem
+            Quaternion& related_quaternion = quaternion_sequence[symbol_table[symbol_table_idx_1].value.int_value];
+            int array_index = related_quaternion.opr1;
+            int offset = related_quaternion.opr2;
+
+            // move offset calculation to the last
+            int delta = symbol_table[symbol_table_idx_1].index_record[1] - symbol_table[symbol_table_idx_1].index_record[0] + 1;
+            vector<Quaternion> temp_sequence;
+            for (int i = symbol_table[symbol_table_idx_1].index_record[0]; i <= symbol_table[symbol_table_idx_1].index_record[1]; ++i) {
+                temp_sequence.push_back(quaternion_sequence[i]);
+            }
+            for (int i = symbol_table[symbol_table_idx_1].index_record[1] + 1; i < quaternion_sequence.size(); ++i) {
+                quaternion_sequence[i - delta] = quaternion_sequence[i];
+            }
+
+            assert(temp_sequence.back().op_code == OP_FETCH_BOOL || temp_sequence.back().op_code == OP_FETCH_INT || temp_sequence.back().op_code == OP_FETCH_FLOAT || temp_sequence.back().op_code == OP_FETCH_DOUBLE);
+
+            for (int i = quaternion_sequence.size() - delta, index2 = 0; i < quaternion_sequence.size() - 1; ++i, ++index2) {
+                quaternion_sequence[i] = temp_sequence[index2];
+            }
+
+            Quaternion array_store_quaternion{OP_CODE::OP_ARRAY_STORE, cast_result_index, offset, array_index};
+            quaternion_sequence[quaternion_sequence.size() - 1] = array_store_quaternion;
+
         }
+
         emit(OP_CODE::OP_ASSIGNMENT, cast_result_index, -1, symbol_table_idx_1);
     }
     else {
+        if (symbol_table[symbol_table_idx_1].is_array && symbol_table[symbol_table_idx_1].is_temp) {
+            // assign to array elem
+            Quaternion& related_quaternion = quaternion_sequence[symbol_table[symbol_table_idx_1].value.int_value];
+            int array_index = related_quaternion.opr1;
+            int offset = related_quaternion.opr2;
+
+            // move offset calculation to the last
+            int delta = symbol_table[symbol_table_idx_1].index_record[1] - symbol_table[symbol_table_idx_1].index_record[0] + 1;
+            vector<Quaternion> temp_sequence;
+            for (int i = symbol_table[symbol_table_idx_1].index_record[0]; i <= symbol_table[symbol_table_idx_1].index_record[1]; ++i) {
+                temp_sequence.push_back(quaternion_sequence[i]);
+            }
+            for (int i = symbol_table[symbol_table_idx_1].index_record[1] + 1; i < quaternion_sequence.size(); ++i) {
+                quaternion_sequence[i - delta] = quaternion_sequence[i];
+            }
+
+            assert(temp_sequence.back().op_code == OP_FETCH_BOOL || temp_sequence.back().op_code == OP_FETCH_INT || temp_sequence.back().op_code == OP_FETCH_FLOAT || temp_sequence.back().op_code == OP_FETCH_DOUBLE);
+
+            for (int i = quaternion_sequence.size() - delta, index2 = 0; i < quaternion_sequence.size() - 1; ++i, ++index2) {
+                quaternion_sequence[i] = temp_sequence[index2];
+            }
+
+            Quaternion array_store_quaternion{OP_CODE::OP_ARRAY_STORE, symbol_table_idx_2, offset, array_index};
+            quaternion_sequence[quaternion_sequence.size() - 1] = array_store_quaternion;
+        }
+
         emit(OP_CODE::OP_ASSIGNMENT, symbol_table_idx_2, -1, symbol_table_idx_1);
     }
     return symbol_table_idx_1;
-}
-
-int Left__LeftBrace_Comma_Comma_Left_RightBrace_post_action(int* return_values_ptr)
-{
-    return return_values_ptr[3];
 }
 
 int Return__return_Expr_Semicolon_post_action(int* return_values_ptr)
@@ -1147,17 +1370,18 @@ int Num__num_post_action(int* return_values_ptr)
     if(is_INT)
     {
         int num = stoi(str);
-        ret = get_temp_symbol(DT_INT);
+        ret = get_temp_symbol(DT_INT, true);
         emit(OP_LI_INT, num, -1, ret);
+        symbol_table[ret].value.int_value = num;
     }
     else if (str.back() == 'f' || str.back() == 'F')
     {
         float num = stof(str);
         int int_num = *((int*)&num);
 
-        ret = get_temp_symbol(DT_FLOAT);
+        ret = get_temp_symbol(DT_FLOAT, true);
         emit(OP_LI_FLOAT, int_num, -1, ret);
-
+        symbol_table[ret].value.float_value = num;
     }
     else {
         double num = stod(str);
@@ -1165,15 +1389,16 @@ int Num__num_post_action(int* return_values_ptr)
         arr[0] = *((int *)&num);
         arr[1] = *((int *)&num + 1);
 
-        ret = get_temp_symbol(DT_DOUBLE);
+        ret = get_temp_symbol(DT_DOUBLE, true);
         emit(OP_LI_DOUBLE, arr[0], arr[1], ret);
+        symbol_table[ret].value.double_value = num;
     }
     return ret;
 }
 
 int Num__true_post_action(int* return_values_ptr)
 {
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, true);
     emit(OP_LI_BOOL, true, -1, ret);
 
     return ret;
@@ -1181,7 +1406,7 @@ int Num__true_post_action(int* return_values_ptr)
 
 int Num__false_post_action(int* return_values_ptr)
 {
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, true);
     emit(OP_LI_BOOL, false, -1, ret);
 
     return ret;

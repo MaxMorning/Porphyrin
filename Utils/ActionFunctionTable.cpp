@@ -65,7 +65,13 @@ int Parameter__Type_Variable_post_function(int* return_values_ptr);
 
 ActionFunction Variable__id_fore_function = always_return_0;
 int Variable__id_post_function(int* return_values_ptr);
-int Variable__Variable_LeftSquareBrace_Variable_RightSquareBrace_post_function(int* return_values_ptr);
+
+int Variable__id_Indices_fore_function(int* return_values_ptr);
+int Variable__id_Indices_post_function(int* return_values_ptr);
+
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* return_values_ptr);
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(int* return_values_ptr);
+int Indices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr);
 
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr);
 int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_values_ptr);
@@ -143,10 +149,6 @@ int Comma__Comma_Comma_Assignment_post_action(int* return_values_ptr);
 int Left__LeftBrace_Comma_Comma_Left_RightBrace_post_action(int* return_values_ptr);
 
 int Assignment__LogicalOr_ASSIGNMENT_Assignment_post_action(int* return_values_ptr);
-
-int Left__LeftBrace_Left_ASSIGNMENT_Expr_RightBrace_post_action(int* return_values_ptr);
-
-ActionFunction Left__Variable_fore_action = Argument__Variable_fore_function;
 
 int Return__return_Expr_Semicolon_post_action(int* return_values_ptr);
 
@@ -261,7 +263,7 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 // Variable
                 {
                         {Variable__id_fore_function, Variable__id_post_function},
-                        {always_return_0, always_return_0},
+                        {Variable__id_Indices_fore_function, Variable__id_Indices_post_function},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
@@ -274,6 +276,18 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 {
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
+                        {always_return_0, always_return_0},
+                        {always_return_0, always_return_0},
+                        {always_return_0, always_return_0},
+                        {always_return_0, always_return_0},
+                        {always_return_0, always_return_0},
+                        {always_return_0, always_return_0}
+                },
+
+                // Indices
+                {
+                        {Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function, Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function},
+                        {always_return_0, Indices__LeftSquareBrace_Expr_RightSquareBrace_post_function},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
@@ -418,7 +432,7 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 {
                         {always_return_0, Comma__Comma_Comma_Assignment_post_action},
                         {always_return_0, always_return_0},
-                        {always_return_0, Left__LeftBrace_Comma_Comma_Left_RightBrace_post_action},
+                        {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},

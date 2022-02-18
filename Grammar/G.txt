@@ -15,7 +15,10 @@ DeclaredVar @ Variable
 DeclaredVar @ Variable = Expr
 
 Variable @ id
-Variable @ Variable [ Expr ]
+Variable @ id Indices
+
+Indices @ [ Expr ] Indices
+Indices @ [ Expr ]
 
 FunDeclaration @ Type Function ( HereIsParameter ) Compound
 FunDeclaration @ Type Function ( ) Compound

@@ -1,7 +1,7 @@
 # Porphyrin
 A C-like language compiler
 
-## nonterminal Sequntial
+## nonterminal Sequence
     Source
     Declarations
     Declaration
@@ -12,6 +12,7 @@ A C-like language compiler
     DeclaredVar
     Variable
     Expr
+    Indices
     Function
     HereIsParameter
     Compound

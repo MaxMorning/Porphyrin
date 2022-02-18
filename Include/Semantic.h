@@ -46,6 +46,11 @@ enum OP_CODE {
     OP_LI_FLOAT,               // load immediate
     OP_LI_DOUBLE,              // load immediate
 
+    OP_FETCH_BOOL,             // fetch an element from array
+    OP_FETCH_INT,              // fetch an element from array
+    OP_FETCH_FLOAT,            // fetch an element from array
+    OP_FETCH_DOUBLE,           // fetch an element from array
+
     OP_EQUAL_INT,              // ==
     OP_EQUAL_FLOAT,            // ==
     OP_EQUAL_DOUBLE,           // ==
@@ -91,87 +96,14 @@ enum OP_CODE {
     OP_DOUBLE_TO_INT,          // double to int
     OP_DOUBLE_TO_FLOAT,        // double to float
 
+    OP_ARRAY_STORE,            // store value to array
+
     OP_RETURN,                 // return value
     OP_NOP,                    // do nothing
     OP_INVALID                 // invalid op
 };
 
-static const string OP_TOKEN[] = {
-    "ASSIGN",                 // =
-    "ADD_INT",                // +
-    "ADD_FLOAT",              // +
-    "ADD_DOUBLE",             // +
-    "MINUS_INT",              // -
-    "MINUS_FLOAT",            // -
-    "MINUS_DOUBLE",           // -
-    "MULTI_INT",              // *
-    "MULTI_FLOAT",            // *
-    "MULTI_DOUBLE",           // *
-    "DIV_INT",                // /
-    "DIV_FLOAT",              // /
-    "DIV_DOUBLE",             // /
-    "COMMA",                  // ,
-    "LOGIC_OR",               // ||
-    "LOGIC_AND",              // &&
-    "LOGIC_NOT",              // !
-    "JEQ",                    // Jump when equal
-    "JNZ",                    // Jump not equal zero
-    "JMP",                    // unconditionally jump
-
-    "LI_BOOL",                // load immediate
-    "LI_INT",                 // load immediate
-    "LI_FLOAT",               // load immediate
-    "LI_DOUBLE",              // load immediate
-
-    "EQUAL_INT",              // ==
-    "EQUAL_FLOAT",            // ==
-    "EQUAL_DOUBLE",           // ==
-    "GREATER_INT",            // >
-    "GREATER_FLOAT",          // >
-    "GREATER_DOUBLE",         // >
-    "GREATER_EQUAL_INT",      // >=
-    "GREATER_EQUAL_FLOAT",    // >=
-    "GREATER_EQUAL_DOUBLE",   // >=
-    "LESS_INT",               // <
-    "LESS_FLOAT",             // <
-    "LESS_DOUBLE",            // <
-    "LESS_EQUAL_INT",         // <=
-    "LESS_EQUAL_FLOAT",       // <=
-    "LESS_EQUAL_DOUBLE",      // <=
-    "NOT_EQUAL_INT",          // !=
-    "NOT_EQUAL_FLOAT",        // !=
-    "NOT_EQUAL_DOUBLE",       // !=
-
-    "NEG",                    // -
-
-    "PAR",                    // add parameter for function call
-    "CALL",                   // function call
-
-    "BOOL_TO_CHAR",           // bool to char
-    "BOOL_TO_INT",            // bool to int
-    "BOOL_TO_FLOAT",          // bool to float
-    "BOOL_TO_DOUBLE",         // bool to double
-    "CHAR_TO_BOOL",           // char to bool
-    "CHAR_TO_INT",            // char to int
-    "CHAR_TO_FLOAT",          // char to float
-    "CHAR_TO_DOUBLE",         // char to double
-    "INT_TO_BOOL",            // int to bool
-    "INT_TO_CHAR",            // int to char
-    "INT_TO_FLOAT",           // int to float
-    "INT_TO_DOUBLE",          // int to double
-    "FLOAT_TO_BOOL",          // float to bool
-    "FLOAT_TO_CHAR",          // float to char
-    "FLOAT_TO_INT",           // float to int
-    "FLOAT_TO_DOUBLE",        // float to double
-    "DOUBLE_TO_BOOL",         // double to bool
-    "DOUBLE_TO_CHAR",         // double to char
-    "DOUBLE_TO_INT",          // double to int
-    "DOUBLE_TO_FLOAT",        // double to float
-
-    "RETURN",                 // return value
-    "NOP",                    // do nothing
-    "INVALID"                 // invalid op
-};
+extern const string OP_TOKEN[];
 
 #define DATA_TYPE_CNT 7
 enum DATA_TYPE_ENUM {               // guaranteed sorting
@@ -184,26 +116,11 @@ enum DATA_TYPE_ENUM {               // guaranteed sorting
     DT_DOUBLE
 };
 
-static const string DATA_TYPE_TOKEN[] = {
-    "NotDecided",
-    "void",
-    "bool",
-    "char",
-    "int",
-    "float",
-    "double"
-};
+extern const string DATA_TYPE_TOKEN[];
 
-static const OP_CODE auto_cast_table[DATA_TYPE_CNT][DATA_TYPE_CNT] = {
-    //DT_NOT_DECIDED,DT_VOID,       DT_BOOL,            DT_CHAR,            DT_INT,         DT_FLOAT,           DT_DOUBLE
-    {OP_INVALID,    OP_INVALID,     OP_INVALID,         OP_INVALID,         OP_INVALID,     OP_INVALID,         OP_INVALID}, // DT_NOT_DECIDED
-    {OP_INVALID,    OP_INVALID,     OP_INVALID,         OP_INVALID,         OP_INVALID,         OP_INVALID,         OP_INVALID}, // DT_VOID
-    {OP_INVALID,    OP_INVALID,     OP_INVALID,         OP_BOOL_TO_CHAR,    OP_BOOL_TO_INT, OP_BOOL_TO_FLOAT,   OP_BOOL_TO_DOUBLE}, // DT_BOOL
-    {OP_INVALID,    OP_INVALID,     OP_CHAR_TO_BOOL,    OP_INVALID,         OP_CHAR_TO_INT,         OP_CHAR_TO_FLOAT,   OP_CHAR_TO_DOUBLE}, // DT_CHAR
-    {OP_INVALID,    OP_INVALID,     OP_INT_TO_BOOL,     OP_INT_TO_CHAR,     OP_INVALID,     OP_INT_TO_FLOAT,    OP_INT_TO_DOUBLE}, // DT_INT
-    {OP_INVALID,    OP_INVALID,     OP_FLOAT_TO_BOOL,   OP_FLOAT_TO_CHAR,   OP_FLOAT_TO_INT,    OP_INVALID,         OP_FLOAT_TO_DOUBLE}, // DT_FLOAT
-    {OP_INVALID,    OP_INVALID,     OP_DOUBLE_TO_BOOL,  OP_DOUBLE_TO_CHAR,  OP_DOUBLE_TO_INT,   OP_DOUBLE_TO_FLOAT, OP_INVALID} // DT_DOUBLE
-};
+extern const unsigned int BASE_DATA_TYPE_SIZE[];
+
+extern const OP_CODE auto_cast_table[DATA_TYPE_CNT][DATA_TYPE_CNT];
 
 struct Quaternion
 {
@@ -213,17 +130,35 @@ struct Quaternion
     int result; // the index in symbol table or jump destination
 };
 
+union ValueType {
+    bool bool_value;
+    int int_value;
+    float float_value;
+    double double_value;
+};
+
 struct SymbolEntry {
     string content;
     bool is_temp;
     bool is_const;
     DATA_TYPE_ENUM data_type;
     bool is_array;
+    unsigned int memory_size;
     int function_index; // -1 means global symbols
     bool is_initial;
     bool is_used;
     Node* node_ptr;
     int last_use_offset;
+
+    // valid in array var
+    vector<int> index_record;
+
+    // only valid in const scalar var
+    ValueType value; // use 64 bit to store the value, can be any data type
+
+    // i386 arch
+    // if is global var or array var, can get variable in [memory_offset]eip, else get in [memory_offset]ebp .
+    int memory_offset;
 };
 
 struct Function {
@@ -254,7 +189,7 @@ void check_unused();
 void print_semantic_result();
 
 extern unsigned int temp_symbol_cnt;
-int get_temp_symbol(DATA_TYPE_ENUM data_type);
+int get_temp_symbol(DATA_TYPE_ENUM data_type, bool is_const);
 
 void back_patch(int list, int addr);
 

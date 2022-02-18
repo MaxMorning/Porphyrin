@@ -172,7 +172,7 @@ int While__while_LeftBrace_Expr_RightBrace_Statement_post_action(int* return_val
 int LogicalOr__LogicalOr_LogicalOR_LogicalAnd_post_action(int* return_values_ptr)
 {
     //calculate temp variable
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, symbol_table[return_values_ptr[0]].is_const && symbol_table[return_values_ptr[2]].is_const);
     /*
     int symbol_table_idx_1 = return_values_ptr[0];
     int symbol_table_idx_2 = return_values_ptr[2];
@@ -222,7 +222,7 @@ int LogicalOr__LogicalOr_LogicalOR_LogicalAnd_post_action(int* return_values_ptr
 int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_ptr)
 {
     //calculate temp variable
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, symbol_table[return_values_ptr[0]].is_const && symbol_table[return_values_ptr[2]].is_const);
     /*
     int symbol_table_idx_1 = return_values_ptr[0];
     int symbol_table_idx_2 = return_values_ptr[2];
@@ -272,7 +272,7 @@ int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_
 int Item__LogicalNOT_Item_post_action(int* return_values_ptr)
 {
     //calculate temp variable
-    int ret = get_temp_symbol(DT_BOOL);
+    int ret = get_temp_symbol(DT_BOOL, symbol_table[return_values_ptr[1]].is_const);
     /*
     int symbol_table_idx_1 = return_values_ptr[1];
     DATA_TYPE_ENUM type1 = symbol_table[symbol_table_idx_1].data_type;

@@ -22,6 +22,8 @@ using namespace std;
 #define boolVarUsageAttr                (-1)
 #define boolFunctionNameUsageAttr       (-2)
 #define boolTypeUsageAttr               (-3)
+#define boolIndicesUsageAttr            (-7)
+#define intIndicesSizeIndexAttr         (-8)
 
 #define boolVarUsage_Declare            0
 #define boolVarUsage_Reference          1
@@ -31,6 +33,12 @@ using namespace std;
 
 #define boolTypeUsage_FuncReturn        0
 #define boolTypeUsage_VarDeclare        1
+
+#define boolExprIsConst_NotConst        0
+#define boolExprIsConst_IsConst         1
+
+#define boolIndicesUsage_Declare        0
+#define boolIndicesUsage_Reference      1
 
 class Node : public Character {
 public:
