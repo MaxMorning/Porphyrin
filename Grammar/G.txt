@@ -7,6 +7,7 @@ Declaration @ VarDeclaration
 Declaration @ FunDeclaration
 
 VarDeclaration @ Type DeclaredVars ;
+VarDeclaration @ const Type DeclaredVars ;
 
 DeclaredVars @ DeclaredVar , DeclaredVars
 DeclaredVars @ DeclaredVar

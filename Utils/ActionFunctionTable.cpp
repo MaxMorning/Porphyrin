@@ -20,6 +20,8 @@ int Source__Declarations_post_action(int* return_values_ptr);
 int VarDeclaration__Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr);
 int VarDeclaration__Type_DeclaredVars_Semicolon_post_action(int* return_values_ptr);
 
+int VarDeclaration__const_Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr);
+
 int DeclaredVar__Variable_fore_action(int* return_values_ptr);
 int DeclaredVar__Variable_post_action(int* return_values_ptr);
 
@@ -203,7 +205,7 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 // VarDeclaration
                 {
                         {VarDeclaration__Type_DeclaredVars_Semicolon_fore_action, VarDeclaration__Type_DeclaredVars_Semicolon_post_action},
-                        {always_return_0, always_return_0},
+                        {VarDeclaration__const_Type_DeclaredVars_Semicolon_fore_action, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},

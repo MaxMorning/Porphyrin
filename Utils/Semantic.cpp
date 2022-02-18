@@ -399,10 +399,18 @@ int Source__Declarations_post_action(int* return_values_ptr)
 
 static DATA_TYPE_ENUM current_data_type;
 
+bool current_type_is_const;
 int VarDeclaration__Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
 {
     Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
-//    semantic_action_stack.push_back(0); // means Type is define var, not function return value
+    current_type_is_const = false;
+    return -1;
+}
+
+int VarDeclaration__const_Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
+{
+    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
+    current_type_is_const = true;
     return -1;
 }
 
@@ -430,6 +438,10 @@ int DeclaredVar__Variable_post_action(int* return_values_ptr)
 {
 //    symbol_table[return_values_ptr[0]].data_type = current_data_type;
 //    symbol_table[return_values_ptr[0]].memory_size = Node::current_node->child_nodes_ptr[0]->get_attribute_value(intMemorySizeAttr);
+    if (current_type_is_const) {
+        Diagnose::printError(Node::current_node->offset, "Uninitialized const " + symbol_table[return_values_ptr[0]].content + '.');
+    }
+
     analyse_symbol_stack.push_back(StackEntry{return_values_ptr[0], current_layer});
     return return_values_ptr[0];
 }
@@ -726,7 +738,7 @@ int Variable__id_post_function(int* return_values_ptr)
         SymbolEntry new_symbol;
         new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
         new_symbol.is_temp = false;
-        new_symbol.is_const = false;
+        new_symbol.is_const = current_type_is_const;
         new_symbol.is_array = false;
         new_symbol.data_type = current_data_type;
         new_symbol.memory_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
@@ -774,6 +786,9 @@ int Variable__id_Indices_fore_function(int* return_values_ptr)
 
     if (arg == boolVarUsage_Declare) {
         // declare a array
+        if (current_type_is_const) {
+            Diagnose::printError(Node::current_node->offset, "Const array is not supported.");
+        }
         Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Declare);
     }
     else {
