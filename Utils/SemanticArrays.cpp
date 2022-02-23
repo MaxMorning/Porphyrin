@@ -123,3 +123,88 @@ const OP_CODE auto_cast_table[DATA_TYPE_CNT][DATA_TYPE_CNT] = {
         {OP_INVALID,    OP_INVALID,     OP_FLOAT_TO_BOOL,   OP_FLOAT_TO_CHAR,   OP_FLOAT_TO_INT,    OP_INVALID,         OP_FLOAT_TO_DOUBLE}, // DT_FLOAT
         {OP_INVALID,    OP_INVALID,     OP_DOUBLE_TO_BOOL,  OP_DOUBLE_TO_CHAR,  OP_DOUBLE_TO_INT,   OP_DOUBLE_TO_FLOAT, OP_INVALID} // DT_DOUBLE
 };
+
+// not decided means the result is same as opr1
+const DATA_TYPE_ENUM OP_CODE_RESULT_DT[] = {
+        DT_NOT_DECIDED,             // =
+        DT_INT,                // +
+        DT_FLOAT,              // +
+        DT_DOUBLE,             // +
+        DT_INT,              // -
+        DT_FLOAT,            // -
+        DT_DOUBLE,           // -
+        DT_INT,              // *
+        DT_FLOAT,            // *
+        DT_DOUBLE,           // *
+        DT_INT,                // /
+        DT_FLOAT,              // /
+        DT_DOUBLE,             // /
+        DT_VOID,                  // ,
+        DT_BOOL,               // Logic or
+        DT_BOOL,              // Logic and
+        DT_BOOL,              // Logic not
+        DT_VOID,                    // Jump when equal
+        DT_VOID,                    // Jump not equal zero
+        DT_VOID,                    // unconditionally jump
+
+        DT_BOOL,                // load immediate
+        DT_INT,                 // load immediate
+        DT_FLOAT,               // load immediate
+        DT_DOUBLE,              // load immediate
+
+        DT_BOOL,             // fetch an element from array
+        DT_INT,              // fetch an element from array
+        DT_FLOAT,            // fetch an element from array
+        DT_DOUBLE,           // fetch an element from array
+
+        DT_INT,              // ==
+        DT_FLOAT,            // ==
+        DT_DOUBLE,           // ==
+        DT_INT,            // >
+        DT_FLOAT,          // >
+        DT_DOUBLE,         // >
+        DT_INT,      // >=
+        DT_FLOAT,    // >=
+        DT_DOUBLE,   // >=
+        DT_INT,               // <
+        DT_FLOAT,             // <
+        DT_DOUBLE,            // <
+        DT_INT,         // <=
+        DT_FLOAT,       // <=
+        DT_DOUBLE,      // <=
+        DT_INT,          // !=
+        DT_FLOAT,        // !=
+        DT_DOUBLE,       // !=
+
+        DT_NOT_DECIDED,                     // -
+
+        DT_NOT_DECIDED,                    // add parameter for function call
+        DT_VOID,                    // function call
+
+        DT_CHAR,           // bool to char
+        DT_INT,            // bool to int
+        DT_FLOAT,          // bool to float
+        DT_DOUBLE,         // bool to double
+        DT_BOOL,           // char to bool
+        DT_INT,            // char to int
+        DT_FLOAT,          // char to float
+        DT_DOUBLE,         // char to double
+        DT_BOOL,            // int to bool
+        DT_CHAR,            // int to char
+        DT_FLOAT,           // int to float
+        DT_DOUBLE,          // int to double
+        DT_BOOL,          // float to bool
+        DT_CHAR,          // float to char
+        DT_INT,           // float to int
+        DT_DOUBLE,        // float to double
+        DT_BOOL,         // double to bool
+        DT_CHAR,         // double to char
+        DT_INT,          // double to int
+        DT_FLOAT,        // double to float
+
+        DT_NOT_DECIDED,            // store value to array
+
+        DT_VOID,                 // return value
+        DT_VOID,                    // do nothing
+        DT_VOID                 // invalid op
+};

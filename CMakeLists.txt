@@ -3,8 +3,7 @@ project(Porphyrin)
 
 set(CMAKE_CXX_STANDARD 14)
 
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DSEMANTIC_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DOPTIMIZE_DEBUG -DSEMANTIC_DEBUG")
 
 include_directories(.)
 
@@ -20,4 +19,4 @@ add_executable(g--
         Utils/Syntax.cpp Include/Syntax.h
         Class/LR1Table.cpp Class/LR1Table.h
         Class/Node.cpp Class/Node.h
-        Utils/Semantic.cpp Utils/ControlStatement.cpp Include/Semantic.h Class/Diagnose.cpp Class/Diagnose.h Utils/ActionFunctionTable.cpp Utils/SemanticArrays.cpp)
+        Utils/Semantic.cpp Utils/ControlStatement.cpp Include/Semantic.h Class/Diagnose.cpp Class/Diagnose.h Utils/ActionFunctionTable.cpp Utils/SemanticArrays.cpp Include/Optimize.h Utils/Optimize.cpp)

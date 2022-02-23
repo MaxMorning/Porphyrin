@@ -14,6 +14,7 @@
 #include "Include/Lexical.h"
 #include "Include/Syntax.h"
 #include "Include/Semantic.h"
+#include "Include/Optimize.h"
 #include "Class/Diagnose.h"
 
 #define LOAD_BUFFER_SIZE 4096
@@ -129,12 +130,20 @@ int main(int argc, char* argv[])
     semantic_analysis(root);
 
 #ifdef SEMANTIC_DEBUG
-    print_semantic_result();
+    print_quaternion_sequence(quaternion_sequence);
 #endif
 
     cout << "Acc!" << endl;
 
     write_semantic_result();
+
+
+    // optimize
+    optimize_IR(quaternion_sequence);
+
+#ifdef OPTIMIZE_DEBUG
+    print_optimize_sequence();
+#endif
 
     // free memory
     root->free_memory();

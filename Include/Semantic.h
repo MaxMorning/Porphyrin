@@ -116,6 +116,8 @@ enum DATA_TYPE_ENUM {               // guaranteed sorting
     DT_DOUBLE
 };
 
+extern const DATA_TYPE_ENUM OP_CODE_RESULT_DT[];
+
 extern const string DATA_TYPE_TOKEN[];
 
 extern const unsigned int BASE_DATA_TYPE_SIZE[];
@@ -186,7 +188,7 @@ void semantic_analysis(Node* root);
 
 void check_unused();
 
-void print_semantic_result();
+void print_quaternion_sequence(vector<Quaternion> sequence);
 
 extern unsigned int temp_symbol_cnt;
 int get_temp_symbol(DATA_TYPE_ENUM data_type, bool is_const);

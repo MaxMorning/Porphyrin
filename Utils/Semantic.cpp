@@ -83,13 +83,13 @@ void check_unused()
 }
 
 
-void print_semantic_result()
+void print_quaternion_sequence(vector<Quaternion> sequence)
 {
     // print quaternion
     cout << "Quaternion sequence" << endl;
     int cnt = 0;
-    for (int i = 0; i < quaternion_sequence.size(); ++i) {
-        Quaternion& quaternion = quaternion_sequence[i];
+    for (int i = 0; i < sequence.size(); ++i) {
+        Quaternion& quaternion = sequence[i];
         cout << cnt << "\t" << OP_TOKEN[quaternion.op_code] << "\t";
         if (OP_TOKEN[quaternion.op_code].size() < 8)
         {
@@ -153,8 +153,29 @@ void print_semantic_result()
     cout << "Symbol table" << endl;
     cnt = 0;
     for (SymbolEntry& symbolEntry : symbol_table) {
+        string value_str;
+        switch (symbolEntry.data_type) {
+            case DT_BOOL:
+                value_str = symbolEntry.value.bool_value ? "true" : "false";
+                break;
+
+            case DT_INT:
+                value_str = to_string(symbolEntry.value.int_value);
+                break;
+
+            case DT_FLOAT:
+                value_str = to_string(symbolEntry.value.float_value);
+                break;
+
+            case DT_DOUBLE:
+                value_str = to_string(symbolEntry.value.double_value);
+                break;
+
+            default:
+                value_str = "";
+        }
         cout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << symbolEntry.content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[symbolEntry.data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_array ? "Array" : "Scalar") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbolEntry.memory_size << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_temp ? "Temp" : "Declare") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) <<
-             (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated")   << endl;
+             (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated") << '\t' << (symbolEntry.is_const ? "Const\t" + value_str : "Variable") << endl;
         ++cnt;
     }
 
@@ -924,6 +945,10 @@ int Variable__id_Indices_post_function(int* return_values_ptr)
                     case DT_DOUBLE:
                         fetch_quaternion.op_code = OP_FETCH_DOUBLE;
                         break;
+
+                    default:
+                        throw "DEBUG: Invalid Data Type!";
+                        break;
                 }
                 quaternion_sequence.push_back(fetch_quaternion);
 
@@ -1107,9 +1132,9 @@ int Comparison__Comparison_CmpSymbol_Addition_post_action(int* return_values_ptr
     DATA_TYPE_ENUM type1 = symbol_table[symbol_table_idx_1].data_type;
     DATA_TYPE_ENUM type2 = symbol_table[symbol_table_idx_2].data_type;
     OP_CODE op_type = (OP_CODE)return_values_ptr[1];
-    if(type1 < DT_BOOL || type2 < DT_BOOL)
+    if(type1 <= DT_BOOL || type2 <= DT_BOOL)
     {
-        Diagnose::printError(Node::current_node->offset, "Illegal Void Calculation.");
+        Diagnose::printError(Node::current_node->offset, "Unsupported Calculation.");
         exit(-1);
     }
     int ret = get_temp_symbol(DT_BOOL, symbol_table[return_values_ptr[0]].is_const && symbol_table[return_values_ptr[2]].is_const);
@@ -1158,9 +1183,9 @@ int Addition__Addition_AddSymbol_Multiplication_post_action(int* return_values_p
     DATA_TYPE_ENUM type1 = symbol_table[symbol_table_idx_1].data_type;
     DATA_TYPE_ENUM type2 = symbol_table[symbol_table_idx_2].data_type;
     OP_CODE op_type = (OP_CODE)return_values_ptr[1];
-    if(type1 < DT_BOOL || type2 < DT_BOOL)
+    if(type1 <= DT_BOOL || type2 <= DT_BOOL)
     {
-        Diagnose::printError(Node::current_node->offset, "Illegal Void Calculation.");
+        Diagnose::printError(Node::current_node->offset, "Unsupported Calculation.");
         exit(-1);
     }
     int ret;
@@ -1190,9 +1215,9 @@ int Multiplication__Multiplication_MulSymbol_Item_post_action(int* return_values
     DATA_TYPE_ENUM type1 = symbol_table[symbol_table_idx_1].data_type;
     DATA_TYPE_ENUM type2 = symbol_table[symbol_table_idx_2].data_type;
     OP_CODE op_type = (OP_CODE)return_values_ptr[1];
-    if(type1 < DT_BOOL || type2 < DT_BOOL)
+    if(type1 <= DT_BOOL || type2 <= DT_BOOL)
     {
-        Diagnose::printError(Node::current_node->offset, "Illegal Void Calculation.");
+        Diagnose::printError(Node::current_node->offset, "Unsupported Calculation.");
         exit(-1);
     }
     int ret;
@@ -1386,7 +1411,7 @@ int Num__num_post_action(int* return_values_ptr)
     {
         int num = stoi(str);
         ret = get_temp_symbol(DT_INT, true);
-        emit(OP_LI_INT, num, -1, ret);
+//        emit(OP_LI_INT, num, -1, ret);
         symbol_table[ret].value.int_value = num;
     }
     else if (str.back() == 'f' || str.back() == 'F')
@@ -1395,7 +1420,7 @@ int Num__num_post_action(int* return_values_ptr)
         int int_num = *((int*)&num);
 
         ret = get_temp_symbol(DT_FLOAT, true);
-        emit(OP_LI_FLOAT, int_num, -1, ret);
+//        emit(OP_LI_FLOAT, int_num, -1, ret);
         symbol_table[ret].value.float_value = num;
     }
     else {
@@ -1405,7 +1430,7 @@ int Num__num_post_action(int* return_values_ptr)
         arr[1] = *((int *)&num + 1);
 
         ret = get_temp_symbol(DT_DOUBLE, true);
-        emit(OP_LI_DOUBLE, arr[0], arr[1], ret);
+//        emit(OP_LI_DOUBLE, arr[0], arr[1], ret);
         symbol_table[ret].value.double_value = num;
     }
     return ret;
@@ -1414,15 +1439,15 @@ int Num__num_post_action(int* return_values_ptr)
 int Num__true_post_action(int* return_values_ptr)
 {
     int ret = get_temp_symbol(DT_BOOL, true);
-    emit(OP_LI_BOOL, true, -1, ret);
-
+//    emit(OP_LI_BOOL, true, -1, ret);
+    symbol_table[ret].value.bool_value = true;
     return ret;
 }
 
 int Num__false_post_action(int* return_values_ptr)
 {
     int ret = get_temp_symbol(DT_BOOL, true);
-    emit(OP_LI_BOOL, false, -1, ret);
-
+//    emit(OP_LI_BOOL, false, -1, ret);
+    symbol_table[ret].value.bool_value = false;
     return ret;
 }
