@@ -208,3 +208,87 @@ const DATA_TYPE_ENUM OP_CODE_RESULT_DT[] = {
         DT_VOID,                    // do nothing
         DT_VOID                 // invalid op
 };
+
+const OPR_USAGE_ENUM OP_CODE_OPR_USAGE[][3] = {
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},                 // =
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},                // +
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // +
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},             // +
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // -
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},            // -
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},           // -
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // *
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},            // *
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},           // *
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},                // /
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // /
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},             // /
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},                  // ,
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},               // ||
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // &&
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},              // !
+        {USAGE_VAR, USAGE_VAR, USAGE_INST},                    // Jump when equal
+        {USAGE_VAR, USAGE_INVALID, USAGE_INST},                    // Jump not equal zero
+        {USAGE_INVALID, USAGE_INVALID, USAGE_INST},                    // unconditionally jump
+
+        {USAGE_VAR, USAGE_INVALID, USAGE_INST},                // load immediate
+        {USAGE_VAR, USAGE_INVALID, USAGE_INST},                 // load immediate
+        {USAGE_VAR, USAGE_INVALID, USAGE_INST},               // load immediate
+        {USAGE_VAR, USAGE_INST, USAGE_INST},              // load immediate
+
+        {USAGE_ARRAY, USAGE_VAR, USAGE_VAR},             // fetch an element from array
+        {USAGE_ARRAY, USAGE_VAR, USAGE_VAR},              // fetch an element from array
+        {USAGE_ARRAY, USAGE_VAR, USAGE_VAR},            // fetch an element from array
+        {USAGE_ARRAY, USAGE_VAR, USAGE_VAR},           // fetch an element from array
+
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},              // ==
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},            // ==
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},           // ==
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},            // >
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},          // >
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},         // >
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},      // >=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},    // >=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},   // >=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},               // <
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},             // <
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},            // <
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},         // <=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},       // <=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},      // <=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},          // !=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},        // !=
+        {USAGE_VAR, USAGE_VAR, USAGE_VAR},       // !=
+
+        {USAGE_VAR, USAGE_INVALID, USAGE_INVALID},                    // -
+
+        {USAGE_VAR, USAGE_INVALID, USAGE_INVALID},                    // add parameter for function call
+        {USAGE_INST, USAGE_INST, USAGE_VAR},                   // function call
+
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},           // bool to char
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},            // bool to int
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // bool to float
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},         // bool to double
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},           // char to bool
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},            // char to int
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // char to float
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},         // char to double
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},            // int to bool
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},            // int to char
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},           // int to float
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // int to double
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // float to bool
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // float to char
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},           // float to int
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},        // float to double
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},         // double to bool
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},         // double to char
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},          // double to int
+        {USAGE_VAR, USAGE_INVALID, USAGE_VAR},        // double to float
+
+        {USAGE_VAR, USAGE_VAR, USAGE_ARRAY},            // store value to array
+
+        {USAGE_VAR, USAGE_INVALID, USAGE_INVALID},                 // return value
+        {USAGE_INVALID, USAGE_INVALID, USAGE_INVALID},                    // do nothing
+        {USAGE_INVALID, USAGE_INVALID, USAGE_INVALID}                 // invalid op
+};

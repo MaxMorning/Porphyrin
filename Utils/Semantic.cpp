@@ -175,7 +175,7 @@ void print_quaternion_sequence(vector<Quaternion> sequence)
                 value_str = "";
         }
         cout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << symbolEntry.content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[symbolEntry.data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_array ? "Array" : "Scalar") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbolEntry.memory_size << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_temp ? "Temp" : "Declare") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) <<
-             (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated") << '\t' << (symbolEntry.is_const ? "Const\t" + value_str : "Variable") << endl;
+             (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated") << '\t' << (symbolEntry.is_const ? "Const" : "Variable") << '\t' <<  value_str << endl;
         ++cnt;
     }
 

@@ -116,6 +116,15 @@ enum DATA_TYPE_ENUM {               // guaranteed sorting
     DT_DOUBLE
 };
 
+enum OPR_USAGE_ENUM {
+    USAGE_INVALID,
+    USAGE_VAR,
+    USAGE_INST,
+    USAGE_ARRAY
+};
+
+extern const OPR_USAGE_ENUM OP_CODE_OPR_USAGE[][3];
+
 extern const DATA_TYPE_ENUM OP_CODE_RESULT_DT[];
 
 extern const string DATA_TYPE_TOKEN[];

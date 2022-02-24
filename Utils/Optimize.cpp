@@ -95,6 +95,9 @@ void split_base_blocks()
                 base_blocks[i].next_block_1_ptr = i + 1;
             }
         }
+        else if (dst_quaternion_index == IS_NOT_BRANCH_IR) {
+            base_blocks[i].next_block_1_ptr = i + 1;
+        }
     }
 
     // check if is reachable
@@ -129,7 +132,7 @@ void split_base_blocks()
 vector<DAGNode*> dag_nodes;
 int* variable_dag_node_map; // symbol_table[i] is represented by dag_nodes[variable_dag_node_map[i]], -1 means not represented
 
-int create_dag_node(int symbol_index, OP_CODE op)
+int create_dag_node(int symbol_index, OP_CODE op, bool force_const = false)
 {
     int dag_node_index = dag_nodes.size();
     variable_dag_node_map[symbol_index] = dag_node_index;
@@ -137,11 +140,12 @@ int create_dag_node(int symbol_index, OP_CODE op)
     DAGNode* new_dag_node = new DAGNode;
     new_dag_node->op = op;
     new_dag_node->represent_variables.emplace(symbol_index);
-    new_dag_node->is_const = symbol_table[symbol_index].is_const;
+    new_dag_node->is_const = force_const || symbol_table[symbol_index].is_const;
     new_dag_node->const_value = symbol_table[symbol_index].value;
     new_dag_node->opr1_ptr = MAX_UNSIGNED_INT;
     new_dag_node->opr2_ptr = MAX_UNSIGNED_INT;
     new_dag_node->is_visited = false;
+    new_dag_node->symbol_index = symbol_index;
 
     dag_nodes.push_back(new_dag_node);
     return dag_node_index;
@@ -187,6 +191,162 @@ void dual_opr_preset(int& opr1_node_index, int& opr2_node_index, const Quaternio
 //        // need erase
 //        dag_nodes[current_node_index].represent_variables.erase(quaternion.result);
 //    }
+}
+
+void set_const_value(Quaternion& quaternion, ValueType& dst_value, ValueType& opr1_value, ValueType& opr2_value)
+{
+    switch (quaternion.op_code) {
+        case OP_ADD_INT:
+            dst_value.int_value = opr1_value.int_value + opr2_value.int_value;
+            break;
+
+        case OP_ADD_FLOAT:
+            dst_value.float_value = opr1_value.float_value + opr2_value.float_value;
+            break;
+
+        case OP_ADD_DOUBLE:
+            dst_value.double_value = opr1_value.double_value + opr2_value.double_value;
+            break;
+
+        case OP_MINUS_INT:
+            dst_value.int_value = opr1_value.int_value - opr2_value.int_value;
+            break;
+
+        case OP_MINUS_FLOAT:
+            dst_value.float_value = opr1_value.float_value - opr2_value.float_value;
+            break;
+
+        case OP_MINUS_DOUBLE:
+            dst_value.double_value = opr1_value.double_value - opr2_value.double_value;
+            break;
+
+        case OP_MULTI_INT:
+            dst_value.int_value = opr1_value.int_value * opr2_value.int_value;
+            break;
+
+        case OP_MULTI_FLOAT:
+            dst_value.float_value = opr1_value.float_value * opr2_value.float_value;
+            break;
+
+        case OP_MULTI_DOUBLE:
+            dst_value.double_value = opr1_value.double_value * opr2_value.double_value;
+            break;
+
+        case OP_DIV_INT:
+            dst_value.int_value = opr1_value.int_value / opr2_value.int_value;
+            break;
+
+        case OP_DIV_FLOAT:
+            dst_value.float_value = opr1_value.float_value / opr2_value.float_value;
+            break;
+
+        case OP_DIV_DOUBLE:
+            dst_value.double_value = opr1_value.double_value / opr2_value.double_value;
+            break;
+
+        case OP_EQUAL_INT:
+            dst_value.bool_value = opr1_value.int_value == opr2_value.int_value;
+            break;
+
+        case OP_EQUAL_FLOAT:
+            dst_value.bool_value = opr1_value.float_value == opr2_value.float_value;
+            break;
+
+        case OP_EQUAL_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value == opr2_value.double_value;
+            break;
+
+        case OP_GREATER_INT:
+            dst_value.bool_value = opr1_value.int_value > opr2_value.int_value;
+            break;
+
+        case OP_GREATER_FLOAT:
+            dst_value.bool_value = opr1_value.float_value > opr2_value.float_value;
+            break;
+
+        case OP_GREATER_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value > opr2_value.double_value;
+            break;
+
+        case OP_GREATER_EQUAL_INT:
+            dst_value.bool_value = opr1_value.int_value >= opr2_value.int_value;
+            break;
+
+        case OP_GREATER_EQUAL_FLOAT:
+            dst_value.bool_value = opr1_value.float_value >= opr2_value.float_value;
+            break;
+
+        case OP_GREATER_EQUAL_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value >= opr2_value.double_value;
+            break;
+
+        case OP_LESS_INT:
+            dst_value.bool_value = opr1_value.int_value < opr2_value.int_value;
+            break;
+
+        case OP_LESS_FLOAT:
+            dst_value.bool_value = opr1_value.float_value < opr2_value.float_value;
+            break;
+
+        case OP_LESS_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value < opr2_value.double_value;
+            break;
+
+        case OP_LESS_EQUAL_INT:
+            dst_value.bool_value = opr1_value.int_value <= opr2_value.int_value;
+            break;
+
+        case OP_LESS_EQUAL_FLOAT:
+            dst_value.bool_value = opr1_value.float_value <= opr2_value.float_value;
+            break;
+
+        case OP_LESS_EQUAL_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value <= opr2_value.double_value;
+            break;
+
+        case OP_NOT_EQUAL_INT:
+            dst_value.bool_value = opr1_value.int_value != opr2_value.int_value;
+            break;
+
+        case OP_NOT_EQUAL_FLOAT:
+            dst_value.bool_value = opr1_value.float_value != opr2_value.float_value;
+            break;
+
+        case OP_NOT_EQUAL_DOUBLE:
+            dst_value.bool_value = opr1_value.double_value != opr2_value.double_value;
+            break;
+
+        default:
+            throw "This should not be executed.";
+            break;
+    }
+}
+
+void dual_opr_instr_generate_node(Quaternion& quaternion, bool can_swap)
+{
+    int opr1_node_index, opr2_node_index;
+
+    dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
+
+    // if two operands are const, can directly calc it
+    if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
+        int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
+        set_const_value(quaternion, dag_nodes[result_node_index]->const_value, dag_nodes[opr1_node_index]->const_value, dag_nodes[opr2_node_index]->const_value);
+    }
+    else {
+        int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, can_swap);
+        if (search_common_expr_index == -1) {
+            // no such common expr
+            int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
+            dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
+            dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
+        }
+        else {
+            // find common expr
+            dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
+            variable_dag_node_map[quaternion.result] = search_common_expr_index;
+        }
+    }
 }
 
 void calculate_use_def_sets()
@@ -327,14 +487,14 @@ void calculate_use_def_sets()
 
         // remove const var
         for (unsigned int symbol_index : temp_use_set) {
-            if (!symbol_table[symbol_index].is_const) {
+            if (!symbol_table[symbol_index].is_const && !(symbol_table[symbol_index].is_array && !symbol_table[symbol_index].is_temp)) {
                 base_block.use_set.emplace(symbol_index);
             }
         }
 
 
         for (unsigned int symbol_index : temp_def_set) {
-            if (!symbol_table[symbol_index].is_const) {
+            if (!symbol_table[symbol_index].is_const && !(symbol_table[symbol_index].is_array && !symbol_table[symbol_index].is_temp)) {
                 base_block.def_set.emplace(symbol_index);
             }
         }
@@ -465,11 +625,11 @@ int generate_quaternions(DAGNode& dag_node, vector<Quaternion>& target_sequence)
     }
 
     int opr1_index, opr2_index;
-    if (dag_node.opr1_ptr != MAX_UNSIGNED_INT && !dag_nodes[dag_node.opr1_ptr]->is_visited) {
+    if (dag_node.opr1_ptr != MAX_UNSIGNED_INT) {
         opr1_index = generate_quaternions(*dag_nodes[dag_node.opr1_ptr], target_sequence);
     }
 
-    if (dag_node.opr2_ptr != MAX_UNSIGNED_INT && !dag_nodes[dag_node.opr2_ptr]->is_visited) {
+    if (dag_node.opr2_ptr != MAX_UNSIGNED_INT) {
         opr2_index = generate_quaternions(*dag_nodes[dag_node.opr2_ptr], target_sequence);
     }
 
@@ -477,13 +637,13 @@ int generate_quaternions(DAGNode& dag_node, vector<Quaternion>& target_sequence)
 
     if (dag_node.op == OP_INVALID) {
         // this node is a const / active variable
-        dag_node.symbol_index = *(dag_node.represent_variables.begin());
+//        dag_node.symbol_index = *(dag_node.represent_variables.begin());
 
         return dag_node.symbol_index;
     }
     else {
-        dag_node.symbol_index = get_temp_symbol(get_result_data_type(dag_node.op, (dag_node.opr1_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID),
-                                                                     (dag_node.opr2_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID) ), false);
+//        dag_node.symbol_index = get_temp_symbol(get_result_data_type(dag_node.op, (dag_node.opr1_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID),
+//                                                                     (dag_node.opr2_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID) ), false);
         target_sequence.push_back({dag_node.op, (dag_node.opr1_ptr != MAX_UNSIGNED_INT ? opr1_index : -1),
                                    (dag_node.opr2_ptr != MAX_UNSIGNED_INT ? opr2_index : -1), dag_node.symbol_index});
 
@@ -491,9 +651,28 @@ int generate_quaternions(DAGNode& dag_node, vector<Quaternion>& target_sequence)
     }
 }
 
+void print_dag_nodes()
+{
+    cout << endl;
+
+    cout << "Block DAG node info" << endl;
+    for (int i = 0; i < dag_nodes.size(); ++i) {
+        DAGNode* dag_node_ptr = dag_nodes[i];
+        cout << i << '\t' << OP_TOKEN[dag_node_ptr->op] << '\t' << symbol_table[dag_node_ptr->symbol_index].content << '\t' << (dag_node_ptr->is_const ? "Const" : "Var") << '\t' << dag_node_ptr->opr1_ptr << '\t' << dag_node_ptr->opr2_ptr << endl;
+    }
+
+    cout << "End DAG node info" << endl;
+
+    cout << endl;
+}
+
 void optimize_base_block(BaseBlock& base_block)
 {
     if (!base_block.is_reachable) {
+        // generate nop instr
+        for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
+            base_block.block_quaternion_sequence.push_back({OP_NOP, -1, -1, -1});
+        }
         return;
     }
 
@@ -522,350 +701,45 @@ void optimize_base_block(BaseBlock& base_block)
             }
 
             case OP_ADD_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.int_value = dag_nodes[opr1_node_index]->const_value.int_value + dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_ADD_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.float_value = dag_nodes[opr1_node_index]->const_value.float_value + dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_ADD_DOUBLE:
+            case OP_MULTI_INT:
+            case OP_MULTI_FLOAT:
+            case OP_MULTI_DOUBLE:
+
+            case OP_EQUAL_INT:
+            case OP_EQUAL_FLOAT:
+            case OP_EQUAL_DOUBLE:
+
+            case OP_NOT_EQUAL_INT:
+            case OP_NOT_EQUAL_FLOAT:
+            case OP_NOT_EQUAL_DOUBLE:
             {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.double_value = dag_nodes[opr1_node_index]->const_value.double_value + dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
+                dual_opr_instr_generate_node(quaternion, true);
                 break;
             }
 
             case OP_MINUS_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.int_value = dag_nodes[opr1_node_index]->const_value.int_value - dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_MINUS_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.float_value = dag_nodes[opr1_node_index]->const_value.float_value - dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_MINUS_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.double_value = dag_nodes[opr1_node_index]->const_value.double_value - dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_MULTI_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.int_value = dag_nodes[opr1_node_index]->const_value.int_value * dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_MULTI_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.float_value = dag_nodes[opr1_node_index]->const_value.float_value * dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_MULTI_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.double_value = dag_nodes[opr1_node_index]->const_value.double_value * dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_DIV_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.int_value = dag_nodes[opr1_node_index]->const_value.int_value / dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_DIV_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.float_value = dag_nodes[opr1_node_index]->const_value.float_value / dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
             case OP_DIV_DOUBLE:
+
+            case OP_GREATER_INT:
+            case OP_GREATER_FLOAT:
+            case OP_GREATER_DOUBLE:
+            case OP_GREATER_EQUAL_INT:
+            case OP_GREATER_EQUAL_FLOAT:
+            case OP_GREATER_EQUAL_DOUBLE:
+            case OP_LESS_INT:
+            case OP_LESS_FLOAT:
+            case OP_LESS_DOUBLE:
+            case OP_LESS_EQUAL_INT:
+            case OP_LESS_EQUAL_FLOAT:
+            case OP_LESS_EQUAL_DOUBLE:
             {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.double_value = dag_nodes[opr1_node_index]->const_value.double_value / dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
+                dual_opr_instr_generate_node(quaternion, false);
                 break;
             }
 
@@ -886,7 +760,90 @@ void optimize_base_block(BaseBlock& base_block)
             }
 
             case OP_JEQ:
+            {
+                int opr1_node_index = variable_dag_node_map[quaternion.opr1];
+                int opr2_node_index = variable_dag_node_map[quaternion.opr2];
+
+                assert(opr1_node_index != -1 && opr2_node_index != -1);
+
+                // if two operands are const, can directly calc it
+                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
+                    if (dag_nodes[opr1_node_index]->const_value.double_value == dag_nodes[opr2_node_index]->const_value.double_value) {
+                        // can directly jump
+                        quaternion_sequence[i] = {OP_JMP, -1, -1, quaternion.result};
+                    }
+                    else {
+                        quaternion_sequence[i] = {OP_NOP, -1, -1, -1};
+                    }
+                }
+                else {
+                    base_block.out_set.emplace(quaternion.opr1);
+                    base_block.out_set.emplace(quaternion.opr2);
+                }
+
+                break;
+            }
+
             case OP_JNZ:
+            {
+                // get opr1 node
+                int opr1_node_index = variable_dag_node_map[quaternion.opr1];
+
+                assert(opr1_node_index != -1);
+
+                if (dag_nodes[opr1_node_index]->is_const) {
+                    switch (symbol_table[quaternion.opr1].data_type) {
+                        case DT_BOOL:
+                            if (dag_nodes[opr1_node_index]->const_value.bool_value != 0) {
+                                // can directly jump
+                                quaternion_sequence[i] = {OP_JMP, -1, -1, quaternion.result};
+                            }
+                            else {
+                                quaternion_sequence[i] = {OP_NOP, -1, -1, -1};
+                            }
+                            break;
+
+                        case DT_INT:
+                            if (dag_nodes[opr1_node_index]->const_value.int_value != 0) {
+                                // can directly jump
+                                quaternion_sequence[i] = {OP_JMP, -1, -1, quaternion.result};
+                            }
+                            else {
+                                quaternion_sequence[i] = {OP_NOP, -1, -1, -1};
+                            }
+                            break;
+
+                        case DT_FLOAT:
+                            if (dag_nodes[opr1_node_index]->const_value.float_value != 0.0f) {
+                                // can directly jump
+                                quaternion_sequence[i] = {OP_JMP, -1, -1, quaternion.result};
+                            }
+                            else {
+                                quaternion_sequence[i] = {OP_NOP, -1, -1, -1};
+                            }
+
+                            break;
+
+                        case DT_DOUBLE:
+                            if (dag_nodes[opr1_node_index]->const_value.double_value != 0.0) {
+                                // can directly jump
+                                quaternion_sequence[i] = {OP_JMP, -1, -1, quaternion.result};
+                            }
+                            else {
+                                quaternion_sequence[i] = {OP_NOP, -1, -1, -1};
+                            }
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+                else {
+                    base_block.out_set.emplace(quaternion.opr1);
+                }
+                break;
+            }
             case OP_JMP:
             case OP_LI_BOOL:
             case OP_LI_INT:
@@ -906,8 +863,8 @@ void optimize_base_block(BaseBlock& base_block)
 
                 dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
 
-                // try find common expr
-                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
+                // try to find common expr
+                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
                 if (search_common_expr_index == -1) {
                     // no such common expr
                     int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
@@ -919,528 +876,6 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
                     variable_dag_node_map[quaternion.result] = search_common_expr_index;
                 }
-                break;
-            }
-
-            case OP_EQUAL_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value == dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_EQUAL_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value == dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_EQUAL_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value == dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value > dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value > dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value > dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_EQUAL_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value >= dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_EQUAL_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value >= dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_GREATER_EQUAL_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value >= dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value < dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value < dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value < dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_EQUAL_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value <= dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_EQUAL_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value <= dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_LESS_EQUAL_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value <= dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_NOT_EQUAL_INT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.int_value != dag_nodes[opr2_node_index]->const_value.int_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_NOT_EQUAL_FLOAT:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.float_value != dag_nodes[opr2_node_index]->const_value.float_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
-                break;
-            }
-
-            case OP_NOT_EQUAL_DOUBLE:
-            {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                // if two operands are const, can directly calc it
-                if (dag_nodes[opr1_node_index]->is_const && dag_nodes[opr2_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
-                    dag_nodes[result_node_index]->const_value.bool_value = dag_nodes[opr1_node_index]->const_value.double_value != dag_nodes[opr2_node_index]->const_value.double_value;
-                }
-                else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, true);
-                    if (search_common_expr_index == -1) {
-                        // no such common expr
-                        int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                        dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                    }
-                    else {
-                        // find common expr
-                        dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                        variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                    }
-                }
-
                 break;
             }
 
@@ -1462,7 +897,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     switch (symbol_table[quaternion.opr1].data_type) {
                         case DT_INT:
                             dag_nodes[result_node_index]->const_value.int_value = - dag_nodes[opr1_node_index]->const_value.int_value;
@@ -1498,8 +933,21 @@ void optimize_base_block(BaseBlock& base_block)
             }
 
             case OP_PAR:
-            case OP_CALL:
+            {
+                base_block.out_set.insert(quaternion.opr1);
+                break;
+            }
+
             case OP_RETURN:
+            {
+                if (quaternion.opr1 != -1) {
+                    base_block.out_set.insert(quaternion.opr1);
+                }
+
+                break;
+            }
+
+            case OP_CALL:
             case OP_NOP:
             {
                 // do nothing
@@ -1539,7 +987,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
@@ -1577,7 +1025,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
@@ -1615,7 +1063,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
@@ -1653,7 +1101,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
@@ -1681,6 +1129,7 @@ void optimize_base_block(BaseBlock& base_block)
                 if (opr1_node_index == -1) {
                     // opr1 node not created
                     opr1_node_index = create_dag_node(quaternion.opr1, OP_INVALID);
+//                    cout << i << '\t' << opr1_node_index << " INT TO FLOAT Hit\t" << symbol_table[quaternion.opr1].content << endl;
                 }
 
                 // erase current records
@@ -1691,7 +1140,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
@@ -1729,7 +1178,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
@@ -1767,7 +1216,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
@@ -1805,7 +1254,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
@@ -1843,7 +1292,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
@@ -1881,7 +1330,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
@@ -1919,7 +1368,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
@@ -1957,7 +1406,7 @@ void optimize_base_block(BaseBlock& base_block)
 //                }
 
                 if (dag_nodes[opr1_node_index]->is_const) {
-                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID);
+                    int result_node_index = create_dag_node(quaternion.result, OP_INVALID, true);
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
@@ -1983,7 +1432,8 @@ void optimize_base_block(BaseBlock& base_block)
 
                 dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
 
-                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index, false);
+                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index,
+                                                                   false);
                 if (search_common_expr_index == -1) {
                     // no such common expr
                     int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
@@ -2001,6 +1451,46 @@ void optimize_base_block(BaseBlock& base_block)
         }
     }
 
+    // give value to const values in symbol table
+    for (int i = 0; i < symbol_table.size(); ++i) {
+//        if (symbol_table[i].is_const && variable_dag_node_map[i] != -1) {
+        if (variable_dag_node_map[i] != -1) { // not checking is_const, because a variable may have a const value
+            symbol_table[i].value = dag_nodes[variable_dag_node_map[i]]->const_value;
+
+            // if a (// non-out active) temp symbol is var but here node is const, assign it to const
+            if (!symbol_table[i].is_const && symbol_table[i].is_temp && !symbol_table[i].is_array && dag_nodes[variable_dag_node_map[i]]->is_const) {
+                symbol_table[i].is_const = true;
+//                auto find_result = base_block.out_set.find(i);
+//                if (find_result == base_block.out_set.end()) {
+//                    symbol_table[i].is_const = true;
+//                }
+//                else {
+//                    // is an out active temp symbol
+//                }
+            }
+        }
+    }
+
+
+    // set the symbol_index of all dag node which represents out active symbol as out active symbol index respectively
+    for (unsigned int out_active_symbol : base_block.out_set) {
+        if (variable_dag_node_map[out_active_symbol] != -1) {
+            dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index = out_active_symbol;
+        }
+    }
+
+    // add used / assigned arr to out set
+    for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
+        Quaternion& quaternion = quaternion_sequence[i];
+        if (quaternion.op_code == OP_ARRAY_STORE) {
+            base_block.out_set.emplace(quaternion.result);
+        }
+        else if (quaternion.op_code >= OP_FETCH_BOOL && quaternion.op_code <= OP_FETCH_DOUBLE) {
+            base_block.out_set.emplace(quaternion.opr1);
+        }
+    }
+
+    print_dag_nodes();
 
     // generate quaternion sequence
     for (unsigned int out_active_symbol : base_block.out_set) {
@@ -2011,29 +1501,55 @@ void optimize_base_block(BaseBlock& base_block)
                 int value_temp_var = -1;
 
                 for (unsigned int symbol_index : dag_nodes[variable_dag_node_map[out_active_symbol]]->represent_variables) {
-                    if (symbol_table[symbol_index].is_const) {
+                    if (symbol_table[symbol_index].is_const || (base_block.in_set.find(symbol_index) != base_block.in_set.end())) {
                         value_temp_var = symbol_index;
                         break;
                     }
                 }
 
-                assert(value_temp_var >= 0);
-                base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
+                if (value_temp_var >= 0 && value_temp_var != out_active_symbol) {
+                    base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
+                }
+//                 else is a passing variable, it belongs to in set and out set
+//#ifdef OPTIMIZE_DEBUG
+//                else {
+//                    auto search_iter = base_block.in_set.find(out_active_symbol);
+//                    if (search_iter == base_block.in_set.end()) {
+//                        throw "Wrong!";
+//                    }
+//                }
+//#endif
             }
             generate_quaternions(*dag_nodes[variable_dag_node_map[out_active_symbol]], base_block.block_quaternion_sequence);
         }
     }
 
-    // generate PAR / return
-    for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
-        if (quaternion_sequence[i].op_code == OP_PAR || quaternion_sequence[i].op_code == OP_RETURN || quaternion_sequence[i].op_code == OP_JNZ) {
-            generate_quaternions(*dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]], base_block.block_quaternion_sequence);
-        }
-        else if (quaternion_sequence[i].op_code == OP_JEQ) {
-            generate_quaternions(*dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]], base_block.block_quaternion_sequence);
-            generate_quaternions(*dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr2]], base_block.block_quaternion_sequence);
+    // process 2 out active var use one DAG node
+    for (unsigned int out_active_symbol : base_block.out_set) {
+        if (variable_dag_node_map[out_active_symbol] != -1 && dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index != out_active_symbol) {
+            base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index,
+                                                            -1, (int)out_active_symbol});
         }
     }
+
+    // insert PAR / ARRAY_STORE instr
+    for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
+        if (quaternion_sequence[i].op_code == OP_PAR) {
+            if (variable_dag_node_map[quaternion_sequence[i].opr1] == -1) {
+                base_block.block_quaternion_sequence.push_back({OP_PAR, quaternion_sequence[i].opr1, -1, -1});
+            }
+            else {
+                base_block.block_quaternion_sequence.push_back({OP_PAR, dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]]->symbol_index, -1, -1});
+            }
+        }
+//        else if (quaternion_sequence[i].op_code == OP_ARRAY_STORE) {
+//            base_block.block_quaternion_sequence.push_back({OP_ARRAY_STORE, dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]]->symbol_index,
+//                                                            dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr2]]->symbol_index, quaternion_sequence[i].result});
+//
+//        }
+    }
+
+
 
 
     // insert nop instructions to match jump offset
@@ -2043,7 +1559,25 @@ void optimize_base_block(BaseBlock& base_block)
     }
 
     // add last one
-    base_block.block_quaternion_sequence.push_back(quaternion_sequence[base_block.end_index]);
+    Quaternion post_process_last_quaternion = quaternion_sequence[base_block.end_index];
+    if (post_process_last_quaternion.op_code == OP_CALL || post_process_last_quaternion.op_code == OP_JMP ||
+            post_process_last_quaternion.op_code == OP_JNZ || post_process_last_quaternion.op_code == OP_JEQ
+            || post_process_last_quaternion.op_code == OP_RETURN) {
+        if (post_process_last_quaternion.opr1 != -1 && OP_CODE_OPR_USAGE[post_process_last_quaternion.op_code][0] == USAGE_VAR
+        && variable_dag_node_map[post_process_last_quaternion.opr1] != -1) {
+            post_process_last_quaternion.opr1 = dag_nodes[variable_dag_node_map[post_process_last_quaternion.opr1]]->symbol_index;
+        }
+
+        if (post_process_last_quaternion.opr2 != -1 && OP_CODE_OPR_USAGE[post_process_last_quaternion.op_code][1] == USAGE_VAR
+        && variable_dag_node_map[post_process_last_quaternion.opr2] != -1) {
+            post_process_last_quaternion.opr2 = dag_nodes[variable_dag_node_map[post_process_last_quaternion.opr2]]->symbol_index;
+        }
+
+        base_block.block_quaternion_sequence.push_back(post_process_last_quaternion);
+    }
+    else if (base_block.end_index - base_block.start_index + 1 != base_block.block_quaternion_sequence.size()){
+        base_block.block_quaternion_sequence.push_back({OP_NOP, -1, -1, -1});
+    }
 
     delete[] variable_dag_node_map;
 //    throw "Not implemented!";
@@ -2069,7 +1603,6 @@ void optimize_IR(vector<Quaternion> quaternion_sequence)
 
 //    throw "Not implemented!";
 }
-
 
 void print_optimize_sequence()
 {
