@@ -1739,6 +1739,22 @@ void symbol_clean_up()
 // todo not implemented
 }
 
+void set_array_size()
+{
+    for (SymbolEntry& symbol_entry : symbol_table) {
+        if (symbol_entry.is_array && !symbol_entry.is_temp) {
+            int size = 1;
+            Node* indices_node = symbol_entry.node_ptr->child_nodes_ptr[1];
+
+            while (indices_node->child_nodes_ptr.size() == 4) {
+                size *= symbol_table[indices_node->get_attribute_value(intIndicesSizeIndexAttr)].value.int_value;
+                indices_node = indices_node->child_nodes_ptr[3];
+            }
+            size *= symbol_table[indices_node->get_attribute_value(intIndicesSizeIndexAttr)].value.int_value;
+            symbol_entry.memory_size = size * BASE_DATA_TYPE_SIZE[symbol_entry.data_type];
+        }
+    }
+}
 
 void optimize_IR(vector<Quaternion> quaternion_sequence)
 {
@@ -1750,6 +1766,7 @@ void optimize_IR(vector<Quaternion> quaternion_sequence)
         optimize_base_block(baseBlock);
     }
 
+    set_array_size();
 
     optimized_sequence.clear();
     for (BaseBlock& baseBlock : base_blocks) {

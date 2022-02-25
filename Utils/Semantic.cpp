@@ -772,7 +772,7 @@ int Variable__id_post_function(int* return_values_ptr)
         new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
         new_symbol.is_used = false;
         new_symbol.is_initial = false;
-        new_symbol.node_ptr = Node::current_node->child_nodes_ptr[0];
+        new_symbol.node_ptr = Node::current_node;
         new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
         symbol_table.push_back(new_symbol);
@@ -880,7 +880,7 @@ int Variable__id_Indices_post_function(int* return_values_ptr)
         new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
         new_symbol.is_used = false;
         new_symbol.is_initial = false;
-        new_symbol.node_ptr = Node::current_node->child_nodes_ptr[0];
+        new_symbol.node_ptr = Node::current_node;
         new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
         // build index vector
