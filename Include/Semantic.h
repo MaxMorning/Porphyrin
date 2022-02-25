@@ -16,6 +16,7 @@
 
 #define NONTERMINAL_CNT 64
 #define MAX_REDUCTION 8
+#define DISPLAY_WIDTH 12
 
 using namespace std;
 

@@ -52,8 +52,9 @@ unsigned int search_base_block(unsigned int entrance_index)
     return -1;
 }
 
-void split_base_blocks()
+void split_base_blocks(vector<Quaternion> quaternion_sequence)
 {
+    base_blocks.clear();
     bool* is_base_block_entry_array = new bool[quaternion_sequence.size()];
     memset(is_base_block_entry_array, 0, quaternion_sequence.size() * sizeof(bool));
 
@@ -671,12 +672,11 @@ void optimize_base_block(BaseBlock& base_block)
     if (!base_block.is_reachable) {
         // generate nop instr
         for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
-            base_block.block_quaternion_sequence.push_back({OP_NOP, -1, -1, -1});
+            base_block.block_quaternion_sequence.push_back(quaternion_sequence[i]);
         }
         return;
     }
 
-    dag_nodes.clear();
     variable_dag_node_map = new int[symbol_table.size()];
     memset(variable_dag_node_map, -1, symbol_table.size() * sizeof(unsigned int));
 
@@ -1448,6 +1448,10 @@ void optimize_base_block(BaseBlock& base_block)
 
                 break;
             }
+
+            default:
+//                throw "Not Supported!";
+                break;
         }
     }
 
@@ -1490,7 +1494,9 @@ void optimize_base_block(BaseBlock& base_block)
         }
     }
 
+#ifdef OPTIMIZE_DEBUG
     print_dag_nodes();
+#endif
 
     // generate quaternion sequence
     for (unsigned int out_active_symbol : base_block.out_set) {
@@ -1510,15 +1516,6 @@ void optimize_base_block(BaseBlock& base_block)
                 if (value_temp_var >= 0 && value_temp_var != out_active_symbol) {
                     base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
                 }
-//                 else is a passing variable, it belongs to in set and out set
-//#ifdef OPTIMIZE_DEBUG
-//                else {
-//                    auto search_iter = base_block.in_set.find(out_active_symbol);
-//                    if (search_iter == base_block.in_set.end()) {
-//                        throw "Wrong!";
-//                    }
-//                }
-//#endif
             }
             generate_quaternions(*dag_nodes[variable_dag_node_map[out_active_symbol]], base_block.block_quaternion_sequence);
         }
@@ -1542,15 +1539,7 @@ void optimize_base_block(BaseBlock& base_block)
                 base_block.block_quaternion_sequence.push_back({OP_PAR, dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]]->symbol_index, -1, -1});
             }
         }
-//        else if (quaternion_sequence[i].op_code == OP_ARRAY_STORE) {
-//            base_block.block_quaternion_sequence.push_back({OP_ARRAY_STORE, dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr1]]->symbol_index,
-//                                                            dag_nodes[variable_dag_node_map[quaternion_sequence[i].opr2]]->symbol_index, quaternion_sequence[i].result});
-//
-//        }
     }
-
-
-
 
     // insert nop instructions to match jump offset
     int nop_instr_cnt = base_block.end_index - base_block.start_index - base_block.block_quaternion_sequence.size();
@@ -1579,13 +1568,181 @@ void optimize_base_block(BaseBlock& base_block)
         base_block.block_quaternion_sequence.push_back({OP_NOP, -1, -1, -1});
     }
 
+
+    // optimize JNZ (x86 optimize)
+    if (base_block.block_quaternion_sequence.back().op_code == OP_JNZ) {
+        // find last def of opr1
+        for (int i = base_block.block_quaternion_sequence.size() - 1; i >= 0; --i) {
+            int last_opr1 = base_block.block_quaternion_sequence.back().opr1;
+            if (OP_CODE_OPR_USAGE[base_block.block_quaternion_sequence[i].op_code][2] == USAGE_VAR && base_block.block_quaternion_sequence[i].result == last_opr1) {
+                // check used in below
+                bool can_optimize = true;
+                for (int idx = i + 1; idx < base_block.block_quaternion_sequence.size() - 1; ++idx) {
+                    Quaternion& quaternion = base_block.block_quaternion_sequence[idx];
+
+                    if (quaternion.opr1 == last_opr1 && OP_CODE_OPR_USAGE[quaternion.op_code][0] == USAGE_VAR) {
+                        can_optimize = false;
+                        break;
+                    }
+
+                    if (quaternion.opr2 == last_opr1 && OP_CODE_OPR_USAGE[quaternion.op_code][1] == USAGE_VAR) {
+                        can_optimize = false;
+                        break;
+                    }
+                }
+
+                if (can_optimize) {
+                    // put instr which def opr1 to the last two
+                    Quaternion def_quaternion = base_block.block_quaternion_sequence[i];
+                    for (int idx = i + 1; idx < base_block.block_quaternion_sequence.size() - 1; ++idx) {
+                        base_block.block_quaternion_sequence[idx - 1] = base_block.block_quaternion_sequence[idx];
+                    }
+
+                    base_block.block_quaternion_sequence[base_block.block_quaternion_sequence.size() - 2] = def_quaternion;
+                }
+                break;
+            }
+        }
+    }
+
+    // free memory
+    for (DAGNode* dag_node : dag_nodes) {
+        delete dag_node;
+    }
+    dag_nodes.clear();
+
     delete[] variable_dag_node_map;
 //    throw "Not implemented!";
 }
 
+void unreachable_block_set_nop(vector<Quaternion>& target_sequence)
+{
+    for (BaseBlock& base_block : base_blocks) {
+        if (!base_block.is_reachable) {
+            for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
+                target_sequence[i] = {OP_NOP, -1, -1, -1};
+            }
+        }
+    }
+}
+
+// clean up optimized_sequence
+void code_clean_up()
+{
+    // prefix
+    int* nop_instr_cnt = new int[base_blocks.size()];
+
+    int cnt = 0;
+
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        for (int idx = base_blocks[i].start_index; idx <= base_blocks[i].end_index; ++idx) {
+            if (optimized_sequence[idx].op_code == OP_NOP) {
+                ++cnt;
+            }
+        }
+
+        nop_instr_cnt[i] = cnt;
+    }
+
+#ifdef OPTIMIZE_DEBUG
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        cout << nop_instr_cnt[i] << '\t';
+    }
+    cout << endl;
+#endif
+
+    // remove nop & adjust jmp / jnz / jeq target
+    vector<Quaternion> removed_sequence;
+    for (int block_idx = 0; block_idx < base_blocks.size(); ++block_idx) {
+        BaseBlock& base_block = base_blocks[block_idx];
+        for (int i = base_block.start_index; i < base_block.end_index; ++i) {
+            if (optimized_sequence[i].op_code != OP_NOP) {
+                removed_sequence.push_back(optimized_sequence[i]);
+            }
+        }
+
+        Quaternion last_quaternion = optimized_sequence[base_block.end_index];
+        if (last_quaternion.op_code == OP_JMP || last_quaternion.op_code == OP_JNZ || last_quaternion.op_code == OP_JEQ) {
+            // adjust jump target
+            int dst_block_idx = search_base_block(base_block.end_index + last_quaternion.result);
+            last_quaternion.result -= nop_instr_cnt[dst_block_idx - 1] - nop_instr_cnt[block_idx];
+
+            removed_sequence.push_back(last_quaternion);
+        }
+        else {
+            if (last_quaternion.op_code != OP_NOP) {
+                removed_sequence.push_back(last_quaternion);
+            }
+        }
+    }
+
+    delete[] nop_instr_cnt;
+
+    optimized_sequence = removed_sequence;
+
+    // update function entrance
+    for (Function& function : Function::function_table) {
+        int base_block_idx = search_base_block(function.entry_address);
+        assert(base_block_idx > 0);
+        function.entry_address -= nop_instr_cnt[base_block_idx - 1];
+    }
+}
+
+void symbol_clean_up()
+{
+    int* old_new_mapping = new int[symbol_table.size()];
+    memset(old_new_mapping, -1, symbol_table.size() * sizeof(int));
+
+    for (SymbolEntry& symbol_entry : symbol_table) {
+        symbol_entry.is_used = false;
+    }
+
+    for (Quaternion& quaternion : optimized_sequence) {
+        if (quaternion.opr1 != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][0] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][0] == USAGE_ARRAY)) {
+            symbol_table[quaternion.opr1].is_used = true;
+        }
+
+        if (quaternion.opr2 != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][1] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][1] == USAGE_ARRAY)) {
+            symbol_table[quaternion.opr2].is_used = true;
+        }
+
+        if (quaternion.result != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][2] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][2] == USAGE_ARRAY)) {
+            symbol_table[quaternion.result].is_used = true;
+        }
+    }
+
+    vector<SymbolEntry> used_temp_symbol_entry;
+    for (int i = 0; i < symbol_table.size(); ++i) {
+        if (symbol_table[i].is_used) {
+            old_new_mapping[i] = used_temp_symbol_entry.size();
+            used_temp_symbol_entry.push_back(symbol_table[i]);
+        }
+    }
+
+    symbol_table = used_temp_symbol_entry;
+
+    for (Quaternion& quaternion : optimized_sequence) {
+        if (quaternion.opr1 != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][0] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][0] == USAGE_ARRAY)) {
+            quaternion.opr1 = old_new_mapping[quaternion.opr1];
+        }
+
+        if (quaternion.opr2 != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][1] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][1] == USAGE_ARRAY)) {
+            quaternion.opr2 = old_new_mapping[quaternion.opr2];
+        }
+
+        if (quaternion.result != -1 && (OP_CODE_OPR_USAGE[quaternion.op_code][2] == USAGE_VAR || OP_CODE_OPR_USAGE[quaternion.op_code][2] == USAGE_ARRAY)) {
+            quaternion.result = old_new_mapping[quaternion.result];
+        }
+    }
+
+    delete[] old_new_mapping;
+// todo not implemented
+}
+
+
 void optimize_IR(vector<Quaternion> quaternion_sequence)
 {
-    split_base_blocks();
+    split_base_blocks(quaternion_sequence);
 
     calculate_active_symbol_sets();
 
@@ -1601,10 +1758,104 @@ void optimize_IR(vector<Quaternion> quaternion_sequence)
         }
     }
 
-//    throw "Not implemented!";
+    // split base block again
+    split_base_blocks(optimized_sequence);
+    unreachable_block_set_nop(optimized_sequence);
+
+    code_clean_up();
+    symbol_clean_up();
 }
 
 void print_optimize_sequence()
 {
     print_quaternion_sequence(optimized_sequence);
+}
+
+void write_optimize_result()
+{
+    // write quaternion
+    ofstream fout("Quaternion.txt");
+    int cnt = 0;
+    for (int i = 0; i < optimized_sequence.size(); ++i) {
+        Quaternion& quaternion = optimized_sequence[i];
+        fout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << OP_TOKEN[quaternion.op_code] << "\t";
+
+        switch (quaternion.op_code) {
+            case OP_CALL:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << Function::function_table[quaternion.opr1].name << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << quaternion.opr2 << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "-" << endl;
+                break;
+
+            case OP_JMP:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "-" << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "-" << quaternion.result + i << endl;
+                break;
+
+            case OP_JEQ:
+            case OP_JNZ:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbol_table[quaternion.opr1].content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << quaternion.result + i << endl;
+                break;
+
+            case OP_LI_BOOL:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr1 ? "true" : "false") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "-"  << setiosflags(ios::left) << setw(DISPLAY_WIDTH)<< symbol_table[quaternion.result].content << endl;
+                break;
+
+            case OP_LI_INT:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << quaternion.opr1 << "" << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "-" << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbol_table[quaternion.result].content << endl;
+                break;
+
+            case OP_LI_DOUBLE: {
+                double double_num;
+                int *int_ptr = (int *) &double_num;
+                int_ptr[0] = quaternion.opr1;
+                int_ptr[1] = quaternion.opr2;
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << double_num << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbol_table[quaternion.result].content << endl;
+                break;
+            }
+
+            case OP_LI_FLOAT: {
+                float float_num = *((float*)(&quaternion.opr1));
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << float_num << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << symbol_table[quaternion.result].content << endl;
+                break;
+            }
+
+//            case OP_FETCH_BOOL:
+//            case OP_FETCH_INT:
+//            case OP_FETCH_FLOAT:
+//            case OP_FETCH_DOUBLE:
+//            case OP_ARRAY_STORE:
+//            {
+//                fout << symbol_table[quaternion.opr1].content << "\t" << quaternion.opr2 << "\t" << symbol_table[quaternion.result].content << endl;
+//                break;
+//            };
+
+            default:
+                fout << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content) << endl;
+                break;
+        }
+        ++cnt;
+    }
+    fout.close();
+
+    // write symbol table
+    fout.open("SymbolTable.txt");
+    cnt = 0;
+    for (SymbolEntry& symbolEntry : symbol_table) {
+        fout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(12) << symbolEntry.content << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[symbolEntry.data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_temp ? "Temp" : "Declare") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) <<
+             (symbolEntry.function_index < 0 ? "Global" : Function::function_table[symbolEntry.function_index].name) << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_used ? "Used" : "Unused") << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << (symbolEntry.is_initial ? "Initialed" : "Uninitiated")   << endl;
+        ++cnt;
+    }
+    fout.close();
+
+    // write function table
+    fout.open("FunctionTable.txt");
+    cnt = 0;
+    for (Function& function : Function::function_table) {
+        fout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.name << "EntryAddr : " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.entry_address << '\t' << "ReturnData: " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[function.return_data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "Args: ";
+
+        for (DATA_TYPE_ENUM& data_type : function.parameter_types) {
+            fout << DATA_TYPE_TOKEN[data_type] << '\t';
+        }
+        fout << endl;
+        ++cnt;
+    }
+    fout.close();
 }

@@ -60,4 +60,6 @@ void optimize_IR(vector<Quaternion> quaternion_sequence);
 
 void print_optimize_sequence();
 
+void write_optimize_result();
+
 #endif //PORPHYRIN_OPTIMIZE_H

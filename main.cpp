@@ -133,10 +133,7 @@ int main(int argc, char* argv[])
     print_quaternion_sequence(quaternion_sequence);
 #endif
 
-    cout << "Acc!" << endl;
-
-    write_semantic_result();
-
+//    write_semantic_result();
 
     // optimize
     optimize_IR(quaternion_sequence);
@@ -144,6 +141,9 @@ int main(int argc, char* argv[])
 #ifdef OPTIMIZE_DEBUG
     print_optimize_sequence();
 #endif
+
+    write_optimize_result();
+    cout << "Acc!" << endl;
 
     // free memory
     root->free_memory();

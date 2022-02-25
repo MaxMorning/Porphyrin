@@ -13,8 +13,6 @@
 #include <fstream>
 #include <iomanip>
 
-#define DISPLAY_WIDTH 12
-
 vector<Function> Function::function_table;
 vector<Quaternion> quaternion_sequence;
 vector<SymbolEntry> symbol_table;
@@ -437,6 +435,9 @@ int VarDeclaration__const_Type_DeclaredVars_Semicolon_fore_action(int* return_va
 
 int VarDeclaration__Type_DeclaredVars_Semicolon_post_action(int* return_values_ptr)
 {
+    if (return_values_ptr[0] == DT_VOID) {
+        Diagnose::printError(Node::current_node->offset, "Cannot use void as a data type of variable.");
+    }
     // fill all the undecided vars
 //    int search_idx = analyse_symbol_stack.size() - 1;
 //
@@ -738,6 +739,9 @@ int Parameter__Type_Variable_fore_function(int* return_values_ptr)
 
 int Parameter__Type_Variable_post_function(int* return_values_ptr)
 {
+    if (return_values_ptr[0] == DT_VOID) {
+        Diagnose::printError(Node::current_node->offset, "Cannot use void as a data type of parameter.");
+    }
     // add new parameter
     // write type to the top of symbol table
 //    symbol_table[return_values_ptr[1]].data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
@@ -1007,6 +1011,7 @@ int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(int* re
             Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
         }
     }
+    return -1;
 }
 
 int Indices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr)
