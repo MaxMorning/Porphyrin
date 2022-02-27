@@ -26,10 +26,9 @@ int Node::semantic_action()
 {
     Node::current_node = this;
     int* return_values = new int[child_nodes_ptr.size()];
-    // fore action function
     // ignore return value
     this->quad = quaternion_sequence.size();
-    (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][0])(nullptr);
+//    (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][0])(nullptr);
 
     for (int i = 0; i < child_nodes_ptr.size(); ++i) {
         if (!child_nodes_ptr[i]->is_terminal) {
@@ -63,9 +62,9 @@ int Node::semantic_action()
 
 void semantic_analysis(Node* root)
 {
-//    for (Nonterminal& nonterminal : Nonterminal::all_nonterminal_chars) {
-//        cout << nonterminal.token << endl;
-//    }
+    for (Nonterminal& nonterminal : Nonterminal::all_nonterminal_chars) {
+        cout << nonterminal.token << endl;
+    }
     root->semantic_action();
     check_unused();
     Diagnose::printStream();
@@ -141,7 +140,7 @@ void print_quaternion_sequence(vector<Quaternion> sequence)
 //            };
 
             default:
-                cout << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << "\t" << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << "\t" << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content) << endl;
+                cout << (quaternion.opr1 < 0 ? "-" : symbol_table[quaternion.opr1].content) << '[' << quaternion.opr1 << ']' << "\t" << (quaternion.opr2 < 0 ? "-" : symbol_table[quaternion.opr2].content) << '[' << quaternion.opr2 << ']' << "\t" << (quaternion.result < 0 ? "-" : symbol_table[quaternion.result].content)  << '[' << quaternion.result << ']' << endl;
                 break;
         }
         ++cnt;
@@ -313,6 +312,12 @@ int always_return_0(int* return_values_ptr)
     }
 }
 
+int IncLayer(int* return_values_ptr)
+{
+    ++current_layer;
+    return 0;
+}
+
 // this function will add quaternion into sequence if inputs can be cast
 int auto_cast(int src_index, DATA_TYPE_ENUM dst_data_type)
 {
@@ -389,11 +394,6 @@ OP_CODE Op_Type_Conversion(OP_CODE op_from, DATA_TYPE_ENUM num_type)
     return op_to;
 }
 
-int Source__Declarations_fore_action(int* return_values_ptr)
-{
-    return 0;
-}
-
 int Source__Declarations_post_action(int* return_values_ptr)
 {
     // find main function
@@ -419,22 +419,23 @@ int Source__Declarations_post_action(int* return_values_ptr)
 static DATA_TYPE_ENUM current_data_type;
 
 bool current_type_is_const;
-int VarDeclaration__Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
-{
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
-    current_type_is_const = false;
-    return -1;
-}
+//int VarDeclaration__Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
+//    current_type_is_const = false;
+//    return -1;
+//}
 
-int VarDeclaration__const_Type_DeclaredVars_Semicolon_fore_action(int* return_values_ptr)
+int VarDeclaration_Const_Type_DeclaredVars_Semicolon_post_action(int* return_values_ptr)
 {
-    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
-    current_type_is_const = true;
+    current_type_is_const = false;
+
     return -1;
 }
 
 int VarDeclaration__Type_DeclaredVars_Semicolon_post_action(int* return_values_ptr)
 {
+    current_type_is_const = false;
     if (return_values_ptr[0] == DT_VOID) {
         Diagnose::printError(Node::current_node->offset, "Cannot use void as a data type of variable.");
     }
@@ -449,14 +450,38 @@ int VarDeclaration__Type_DeclaredVars_Semicolon_post_action(int* return_values_p
     return 0;
 }
 
-int DeclaredVar__Variable_fore_action(int* return_values_ptr)
+//int DeclaredVar__Variable_fore_action(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+////    semantic_action_stack.push_back(0); // means create a new var
+//    return 0;
+//}
+
+int create_new_symbol(Node* id_ptr, DATA_TYPE_ENUM data_type, bool is_const)
 {
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
-//    semantic_action_stack.push_back(0); // means create a new var
-    return 0;
+    // add new var
+    SymbolEntry new_symbol;
+    new_symbol.content = id_ptr->content;
+    cout << id_ptr->content << " Content" << endl;
+    new_symbol.is_temp = false;
+    new_symbol.is_const = is_const;
+    new_symbol.is_array = false;
+    new_symbol.data_type = data_type;
+    new_symbol.memory_size = BASE_DATA_TYPE_SIZE[(int)data_type];
+//        Node::current_node->attributes.emplace(intMemorySizeAttr, BASE_DATA_TYPE_SIZE[(int)current_data_type]);
+
+    new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
+    new_symbol.is_used = false;
+    new_symbol.is_initial = false;
+    new_symbol.node_ptr = id_ptr;
+    new_symbol.last_use_offset = new_symbol.node_ptr->offset;
+
+    symbol_table.push_back(new_symbol);
+
+    return symbol_table.size() - 1;
 }
 
-int DeclaredVar__Variable_post_action(int* return_values_ptr)
+int DeclaredVar__id_post_action(int* return_values_ptr)
 {
 //    symbol_table[return_values_ptr[0]].data_type = current_data_type;
 //    symbol_table[return_values_ptr[0]].memory_size = Node::current_node->child_nodes_ptr[0]->get_attribute_value(intMemorySizeAttr);
@@ -464,53 +489,94 @@ int DeclaredVar__Variable_post_action(int* return_values_ptr)
         Diagnose::printError(Node::current_node->offset, "Uninitialized const " + symbol_table[return_values_ptr[0]].content + '.');
     }
 
-    analyse_symbol_stack.push_back(StackEntry{return_values_ptr[0], current_layer});
-    return return_values_ptr[0];
+    int new_idx = create_new_symbol(Node::current_node->child_nodes_ptr[0], current_data_type, current_type_is_const);
+
+    analyse_symbol_stack.push_back(StackEntry{new_idx, current_layer});
+    return new_idx;
 }
 
-int DeclaredVar__Variable_Assignment_Expr_fore_action(int* return_values_ptr)
+void build_array_index_vector(Node* variable_node, vector<int>& index_vector);
+
+int DeclaredVar__id_Indices_post_action(int* return_values_ptr)
 {
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
-//    semantic_action_stack.push_back(0); // means create a new var
-    return 0;
+    // declare a array
+    SymbolEntry new_symbol;
+    new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
+    new_symbol.is_temp = false;
+    new_symbol.is_const = false;
+    new_symbol.is_array = true;
+
+    new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
+    new_symbol.is_used = false;
+    new_symbol.is_initial = false;
+    new_symbol.node_ptr = Node::current_node;
+    new_symbol.last_use_offset = new_symbol.node_ptr->offset;
+
+    // build index vector
+    build_array_index_vector(Node::current_node, new_symbol.index_record);
+
+    // calc memory size
+//        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
+//        for (int index_of_index : new_symbol.index_record) {
+//            current_size *= symbol_table[index_of_index].value.int_value;
+//        }
+
+    new_symbol.data_type = current_data_type;
+//        new_symbol.memory_size = current_size;
+    new_symbol.memory_size = -1; // the size of array will be calculated in DAG optimization part
+
+    symbol_table.push_back(new_symbol);
+
+    analyse_symbol_stack.push_back({(int)(symbol_table.size() - 1), current_layer});
+
+    return symbol_table.size() - 1;
 }
 
-int DeclaredVar__Variable_Assignment_Expr_post_action(int* return_values_ptr)
+//int DeclaredVar__Variable_Assignment_Expr_fore_action(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+////    semantic_action_stack.push_back(0); // means create a new var
+//    return 0;
+//}
+
+int DeclaredVar__id_Assignment_Expr_post_action(int* return_values_ptr)
 {
-    symbol_table[return_values_ptr[0]].data_type = current_data_type;
-    if (!symbol_table[return_values_ptr[0]].is_array) {
-        symbol_table[return_values_ptr[0]].memory_size = BASE_DATA_TYPE_SIZE[(int) current_data_type]; // assign to array is not supported
+    int new_idx = create_new_symbol(Node::current_node->child_nodes_ptr[0], current_data_type, current_type_is_const);
+
+    analyse_symbol_stack.push_back(StackEntry{new_idx, current_layer});
+
+    if (!symbol_table[new_idx].is_array) {
+        symbol_table[new_idx].memory_size = BASE_DATA_TYPE_SIZE[(int) current_data_type]; // assign to array is not supported
     }
     else {
         Diagnose::printError(Node::current_node->offset, "Assign to array is not supported");
     }
 
-    symbol_table[return_values_ptr[0]].is_initial = true;
-    analyse_symbol_stack.push_back(StackEntry{return_values_ptr[0], current_layer});
+    symbol_table[new_idx].is_initial = true;
 
     // check if need auto cast
-    if (symbol_table[return_values_ptr[2]].data_type == symbol_table[return_values_ptr[0]].data_type) {
-        quaternion_sequence.push_back(Quaternion{OP_ASSIGNMENT, return_values_ptr[2], -1, return_values_ptr[0]});
+    if (symbol_table[return_values_ptr[2]].data_type == symbol_table[new_idx].data_type) {
+        quaternion_sequence.push_back(Quaternion{OP_ASSIGNMENT, return_values_ptr[2], -1, new_idx});
     }
     else {
         // need auto cast
         // check can cast
-        int cast_result_idx = auto_cast(return_values_ptr[2], symbol_table[return_values_ptr[0]].data_type);
+        int cast_result_idx = auto_cast(return_values_ptr[2], symbol_table[new_idx].data_type);
         if (cast_result_idx >= 0) {
             // can cast
-            quaternion_sequence.push_back(Quaternion{OP_ASSIGNMENT, cast_result_idx, -1, return_values_ptr[0]});
+            quaternion_sequence.push_back(Quaternion{OP_ASSIGNMENT, cast_result_idx, -1, new_idx});
         }
         else {
             // cannot cast
             // todo throw error : CAST ERROR
-            Diagnose::printError(Node::current_node->offset, "Can not cast " + DATA_TYPE_TOKEN[symbol_table[return_values_ptr[0]].data_type] + " from " + DATA_TYPE_TOKEN[symbol_table[return_values_ptr[2]].data_type] + '.');
+            Diagnose::printError(Node::current_node->offset, "Can not cast " + DATA_TYPE_TOKEN[symbol_table[new_idx].data_type] + " from " + DATA_TYPE_TOKEN[symbol_table[return_values_ptr[2]].data_type] + '.');
             exit(-1);
         }
     }
-    return return_values_ptr[0];
+    return new_idx;
 }
 
-int FunDeclaration__Type_Function_LeftBrace_HereIsParameter_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_values_ptr)
+int IdLeftBrace__id_LeftBrace_post_action(int* return_values_ptr)
 {
     // create function table
     Function new_function;
@@ -518,12 +584,24 @@ int FunDeclaration__Type_Function_LeftBrace_HereIsParameter_RightBrace_LeftCurly
     Function::function_table.push_back(new_function);
 
 //    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
-    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
+//    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
 
 //    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
 
     ++current_layer;
+
+    Function::function_table.back().return_data_type = current_data_type;
+
+    Function::function_table.back().name = Node::current_node->child_nodes_ptr[0]->content;
+
+    Function& last_function = Function::function_table.back();
+    // check dup
+    for (int i = 0; i < Function::function_table.size() - 1; ++i) {
+        if (Function::function_table[i].name == last_function.name) {
+            Diagnose::printError(Node::current_node->offset, "Function " + last_function.name + " already defined.");
+        }
+    }
     return 0;
 }
 
@@ -534,7 +612,7 @@ void clear_symbol_stack()
     }
 }
 
-int FunDeclaration__Type_Function_LeftBrace_HereIsParameter_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr)
+int FunDeclaration__Type_FuncName_LeftBrace_HereIsParameter_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr)
 {
 //    Function::function_table.back().return_data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
 
@@ -543,122 +621,151 @@ int FunDeclaration__Type_Function_LeftBrace_HereIsParameter_RightBrace_LeftCurly
 
     --current_layer;
 
+//    Function new_function;
+//    new_function.name = Node::current_node->child_nodes_ptr[1]->content;
+//
+//    Function::function_table.push_back(new_function);
+
     quaternion_sequence.push_back(Quaternion{OP_RETURN, -1, -1, -1});
     return Function::function_table.size() - 1;
 }
 
-int FunDeclaration__Type_Function_LeftBrace_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_values_ptr)
+//int FunDeclaration__Type_id_LeftBrace_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_values_ptr)
+//{
+//    // create function table
+//    Function new_function;
+//    new_function.entry_address = quaternion_sequence.size();
+//    Function::function_table.push_back(new_function);
+//
+////    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
+////    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
+//
+////    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
+////    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
+//
+//    Function::function_table.back().parameter_types.clear();
+//    ++current_layer;
+//    return 0;
+//}
+
+int FunDeclaration__Type_FuncName_LeftBrace_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr)
 {
-    // create function table
-    Function new_function;
-    new_function.entry_address = quaternion_sequence.size();
-    Function::function_table.push_back(new_function);
+//    Function::function_table.back().return_data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
+//    Function::function_table.back().return_data_type = static_cast<DATA_TYPE_ENUM>(Node::current_node->child_nodes_ptr[0]->get_attribute_value(enumTypeValueAttr));
 
-//    semantic_action_stack.push_back(0); // passing arg to Function nonterminal,means it is declaration
-    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Declare);
+    // clear stack on current layer
+    clear_symbol_stack();
 
-//    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
+    --current_layer;
+    quaternion_sequence.push_back(Quaternion{OP_RETURN, -1, -1, -1});
+    return Function::function_table.size() - 1;
+}
 
-    Function::function_table.back().parameter_types.clear();
-    ++current_layer;
+int FuncName__id(int* return_values_ptr)
+{
+    Function::function_table.back().name = Node::current_node->child_nodes_ptr[0]->content;
+
+    Function& last_function = Function::function_table.back();
+    // check dup
+    for (int i = 0; i < Function::function_table.size() - 1; ++i) {
+        if (Function::function_table[i].name == last_function.name) {
+            Diagnose::printError(Node::current_node->offset, "Function " + last_function.name + " already defined.");
+        }
+    }
     return 0;
-}
-
-int FunDeclaration__Type_Function_LeftBrace_RightBrace_LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr)
-{
-//    Function::function_table.back().return_data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
-
-    // clear stack on current layer
-    clear_symbol_stack();
-
-    --current_layer;
-    quaternion_sequence.push_back(Quaternion{OP_RETURN, -1, -1, -1});
-    return Function::function_table.size() - 1;
 }
 
 int Type__int_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
-
-    if (arg == boolTypeUsage_FuncReturn) {
-        // function return type
-        Function::function_table.back().return_data_type = DT_INT;
-    }
-    else {
+//    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+////    int arg = semantic_action_stack.back();
+////    assert(!semantic_action_stack.empty());
+////    semantic_action_stack.pop_back();
+//
+//    if (arg == boolTypeUsage_FuncReturn) {
+//        // function return type
+//        Function::function_table.back().return_data_type = DT_INT;
+//    }
+//    else {
         current_data_type = DT_INT;
-    }
+//    }
+    Node::current_node->attributes.emplace(enumTypeValueAttr, DT_INT);
+
     return DT_INT;
 }
 
 int Type__float_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
-
-    if (arg == boolTypeUsage_FuncReturn) {
-        // function return type
-        Function::function_table.back().return_data_type = DT_FLOAT;
-    }
-    else {
+//    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+////    int arg = semantic_action_stack.back();
+////    assert(!semantic_action_stack.empty());
+////    semantic_action_stack.pop_back();
+//
+//    if (arg == boolTypeUsage_FuncReturn) {
+//        // function return type
+//        Function::function_table.back().return_data_type = DT_FLOAT;
+//    }
+//    else {
         current_data_type = DT_FLOAT;
-    }
+//    }
+    Node::current_node->attributes.emplace(enumTypeValueAttr, DT_FLOAT);
+
     return DT_FLOAT;
 }
 
 int Type__void_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
-
-    if (arg == boolTypeUsage_FuncReturn) {
-        // function return type
-        Function::function_table.back().return_data_type = DT_VOID;
-    }
-    else {
+//    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+////    int arg = semantic_action_stack.back();
+////    assert(!semantic_action_stack.empty());
+////    semantic_action_stack.pop_back();
+//
+//    if (arg == boolTypeUsage_FuncReturn) {
+//        // function return type
+//        Function::function_table.back().return_data_type = DT_VOID;
+//    }
+//    else {
         current_data_type = DT_VOID;
-    }
+//    }
+    Node::current_node->attributes.emplace(enumTypeValueAttr, DT_VOID);
+
     return DT_VOID;
 }
 
 int Type__double_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
-
-    if (arg == boolTypeUsage_FuncReturn) {
-        // function return type
-        Function::function_table.back().return_data_type = DT_DOUBLE;
-    }
-    else {
+//    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+////    int arg = semantic_action_stack.back();
+////    assert(!semantic_action_stack.empty());
+////    semantic_action_stack.pop_back();
+//
+//    if (arg == boolTypeUsage_FuncReturn) {
+//        // function return type
+//        Function::function_table.back().return_data_type = DT_DOUBLE;
+//    }
+//    else {
         current_data_type = DT_DOUBLE;
-    }
+//    }
+
+    Node::current_node->attributes.emplace(enumTypeValueAttr, DT_DOUBLE);
     return DT_DOUBLE;
 }
 
 int Type__bool_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
-
-    if (arg == boolTypeUsage_FuncReturn) {
-        // function return type
-        Function::function_table.back().return_data_type = DT_BOOL;
-    }
-    else {
+//    int arg = Node::current_node->get_attribute_value(boolTypeUsageAttr);
+////    int arg = semantic_action_stack.back();
+////    assert(!semantic_action_stack.empty());
+////    semantic_action_stack.pop_back();
+//
+//    if (arg == boolTypeUsage_FuncReturn) {
+//        // function return type
+//        Function::function_table.back().return_data_type = DT_BOOL;
+//    }
+//    else {
         current_data_type = DT_BOOL;
-    }
+//    }
+    Node::current_node->attributes.emplace(enumTypeValueAttr, DT_BOOL);
     return DT_BOOL;
 }
 
@@ -727,102 +834,117 @@ int Parameters__Parameter_post_function(int* return_values_ptr)
 {
     return return_values_ptr[0];
 }
-int Parameter__Type_Variable_fore_function(int* return_values_ptr)
-{
-//    semantic_action_stack.push_back(0); // means variable is creating
-    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+//int Parameter__Type_Variable_fore_function(int* return_values_ptr)
+//{
+////    semantic_action_stack.push_back(0); // means variable is creating
+//    Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Declare);
+//
+////    semantic_action_stack.push_back(0);  // means Type is define var, not function return value
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
+//    return 0;
+//}
 
-//    semantic_action_stack.push_back(0);  // means Type is define var, not function return value
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_VarDeclare);
-    return 0;
-}
-
-int Parameter__Type_Variable_post_function(int* return_values_ptr)
+int Parameter__Type_id_post_function(int* return_values_ptr)
 {
     if (return_values_ptr[0] == DT_VOID) {
         Diagnose::printError(Node::current_node->offset, "Cannot use void as a data type of parameter.");
     }
+    int new_idx = create_new_symbol(Node::current_node->child_nodes_ptr[1], current_data_type, current_type_is_const);
+
+//    analyse_symbol_stack.push_back(StackEntry{new_idx, current_layer});
+
     // add new parameter
     // write type to the top of symbol table
-//    symbol_table[return_values_ptr[1]].data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
-//    symbol_table[return_values_ptr[1]].memory_size = Node::current_node->child_nodes_ptr[1]->get_attribute_value(intMemorySizeAttr);
-    analyse_symbol_stack.push_back(StackEntry{return_values_ptr[1], current_layer});
+    symbol_table[new_idx].data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
+
+    if (!symbol_table[new_idx].is_array) {
+        symbol_table[new_idx].memory_size = BASE_DATA_TYPE_SIZE[return_values_ptr[0]];
+    }
+
+    analyse_symbol_stack.push_back(StackEntry{new_idx, current_layer});
 
     return symbol_table.size() - 1;
 }
 
-int Variable__id_post_function(int* return_values_ptr)
+int Parameter__Type_id_Indices_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
-//    int arg = semantic_action_stack.back();
-//    assert(!semantic_action_stack.empty());
-//    semantic_action_stack.pop_back();
+    // declare a array
+    SymbolEntry new_symbol;
+    new_symbol.content = Node::current_node->child_nodes_ptr[1]->content;
+    new_symbol.is_temp = false;
+    new_symbol.is_const = false;
+    new_symbol.is_array = true;
 
-    if (arg == boolVarUsage_Declare) {
-        // add new var
-        SymbolEntry new_symbol;
-        new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
-        new_symbol.is_temp = false;
-        new_symbol.is_const = current_type_is_const;
-        new_symbol.is_array = false;
-        new_symbol.data_type = current_data_type;
-        new_symbol.memory_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
-//        Node::current_node->attributes.emplace(intMemorySizeAttr, BASE_DATA_TYPE_SIZE[(int)current_data_type]);
+    new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
+    new_symbol.is_used = false;
+    new_symbol.is_initial = false;
+    new_symbol.node_ptr = Node::current_node;
+    new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
-        new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
-        new_symbol.is_used = false;
-        new_symbol.is_initial = false;
-        new_symbol.node_ptr = Node::current_node;
-        new_symbol.last_use_offset = new_symbol.node_ptr->offset;
+    // build index vector
+    build_array_index_vector(Node::current_node, new_symbol.index_record);
 
-        symbol_table.push_back(new_symbol);
+    // calc memory size
+//        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
+//        for (int index_of_index : new_symbol.index_record) {
+//            current_size *= symbol_table[index_of_index].value.int_value;
+//        }
 
-        return symbol_table.size() - 1;
-    }
-    else {
-        // find var index in stack
-        int searching_idx = analyse_symbol_stack.size() - 1;
-        while (searching_idx >= 0) {
-            if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
-                // find
-                SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
-//                if (!symbolEntry.is_temp && !symbolEntry.is_initial) {
-//                    Diagnose::printWarning(symbolEntry.node_ptr->offset, "Variable " + symbolEntry.content + " used without initialized.");
-//                }
-                symbolEntry.is_used = true;
-                symbolEntry.last_use_offset = Node::current_node->offset;
-                return analyse_symbol_stack[searching_idx].symbol_index;
-            }
-            --searching_idx;
-        }
+    new_symbol.data_type = static_cast<DATA_TYPE_ENUM>(return_values_ptr[0]);
+//        new_symbol.memory_size = current_size;
+    new_symbol.memory_size = -1; // the size of array will be calculated in DAG optimization part
 
-        // not found
-        // todo throw error : SYMBOL NOT FOUND
-        Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
-        exit(-1);
-        return -2;
-    }
+    symbol_table.push_back(new_symbol);
 
+    return symbol_table.size() - 1;
 }
 
-int Variable__id_Indices_fore_function(int* return_values_ptr)
+int VariableUse__id_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
-
-    if (arg == boolVarUsage_Declare) {
-        // declare a array
-        if (current_type_is_const) {
-            Diagnose::printError(Node::current_node->offset, "Const array is not supported.");
+    // find var index in stack
+    int searching_idx = analyse_symbol_stack.size() - 1;
+    while (searching_idx >= 0) {
+        if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
+            // find
+            SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
+//               if (!symbolEntry.is_temp && !symbolEntry.is_initial) {
+//                   Diagnose::printWarning(symbolEntry.node_ptr->offset, "Variable " + symbolEntry.content + " used without initialized.");
+//               }
+            symbolEntry.is_used = true;
+            symbolEntry.last_use_offset = Node::current_node->offset;
+            return analyse_symbol_stack[searching_idx].symbol_index;
         }
-        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Declare);
-    }
-    else {
-        // get a reference of a array
-        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Reference);
+        --searching_idx;
     }
 
-    return 0;
+    // not found
+    // todo throw error : SYMBOL NOT FOUND
+    // print symbol table
+    print_quaternion_sequence(quaternion_sequence);
+
+    Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
+    exit(-1);
+    return -2;
 }
+
+//int Variable__id_Indices_fore_function(int* return_values_ptr)
+//{
+//    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
+//
+//    if (arg == boolVarUsage_Declare) {
+//        // declare a array
+//        if (current_type_is_const) {
+//            Diagnose::printError(Node::current_node->offset, "Const array is not supported.");
+//        }
+//        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Declare);
+//    }
+//    else {
+//        // get a reference of a array
+//        Node::current_node->child_nodes_ptr[1]->attributes.emplace(boolIndicesUsageAttr, boolIndicesUsage_Reference);
+//    }
+//
+//    return 0;
+//}
 
 void build_array_index_vector(Node* variable_node, vector<int>& index_vector)
 {
@@ -865,107 +987,73 @@ int calc_array_element_offset(vector<int> index_vector, vector<int> length_vecto
     return new_var;
 }
 
-int Variable__id_Indices_post_function(int* return_values_ptr)
+int VariableUse__id_Indices_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolVarUsageAttr);
 
-    if (arg == boolVarUsage_Declare) {
-        // declare a array
-        SymbolEntry new_symbol;
-        new_symbol.content = Node::current_node->child_nodes_ptr[0]->content;
-        new_symbol.is_temp = false;
-        new_symbol.is_const = false;
-        new_symbol.is_array = true;
+    // reference an element of an array
+    int searching_idx = analyse_symbol_stack.size() - 1;
+    while (searching_idx >= 0) {
+        if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
+            // find array
+            SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
 
-        new_symbol.function_index = (current_layer == 0 ? -1 : int(Function::function_table.size() - 1));
-        new_symbol.is_used = false;
-        new_symbol.is_initial = false;
-        new_symbol.node_ptr = Node::current_node;
-        new_symbol.last_use_offset = new_symbol.node_ptr->offset;
+            // check index valid & calc offset
+            vector<int> indices_vector;
+            build_array_index_vector(Node::current_node, indices_vector);
 
-        // build index vector
-        build_array_index_vector(Node::current_node, new_symbol.index_record);
-
-        // calc memory size
-//        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
-//        for (int index_of_index : new_symbol.index_record) {
-//            current_size *= symbol_table[index_of_index].value.int_value;
-//        }
-
-        new_symbol.data_type = current_data_type;
-//        new_symbol.memory_size = current_size;
-        new_symbol.memory_size = -1; // the size of array will be calculated in DAG optimization part
-
-        symbol_table.push_back(new_symbol);
-
-        return symbol_table.size() - 1;
-    }
-    else {
-        // reference an element of an array
-        int searching_idx = analyse_symbol_stack.size() - 1;
-        while (searching_idx >= 0) {
-            if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
-                // find array
-                SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
-
-                // check index valid & calc offset
-                vector<int> indices_vector;
-                build_array_index_vector(Node::current_node, indices_vector);
-
-                if (indices_vector.size() != symbolEntry.index_record.size()) {
-                    Diagnose::printError(Node::current_node->offset, "Invalid index/indices to fetch an element from array.");
-                }
-
-                int offset_calc_start_index = quaternion_sequence.size();
-                int memory_offset_var_index = calc_array_element_offset(indices_vector, symbolEntry.index_record);
-                int offset_calc_end_index = quaternion_sequence.size();
-
-                symbolEntry.is_used = true;
-                symbolEntry.last_use_offset = Node::current_node->offset;
-
-                int array_index = analyse_symbol_stack[searching_idx].symbol_index;
-                int new_symbol = get_temp_symbol(symbolEntry.data_type, false);
-                symbol_table[new_symbol].is_array = true; // when a symbol is both array and temp, means it is a reference of an element, maybe assigned
-
-                // index_record[0..1] represent the quaternion which calc offset
-                symbol_table[new_symbol].value.int_value = quaternion_sequence.size();
-                symbol_table[new_symbol].index_record.push_back(offset_calc_start_index);
-                symbol_table[new_symbol].index_record.push_back(offset_calc_end_index);
-
-                Quaternion fetch_quaternion{OP_INVALID, array_index, memory_offset_var_index, new_symbol};
-                switch (symbolEntry.data_type) {
-                    case DT_BOOL:
-                        fetch_quaternion.op_code = OP_FETCH_BOOL;
-                        break;
-
-                    case DT_INT:
-                        fetch_quaternion.op_code = OP_FETCH_INT;
-                        break;
-
-                    case DT_FLOAT:
-                        fetch_quaternion.op_code = OP_FETCH_FLOAT;
-                        break;
-
-                    case DT_DOUBLE:
-                        fetch_quaternion.op_code = OP_FETCH_DOUBLE;
-                        break;
-
-                    default:
-                        throw "DEBUG: Invalid Data Type!";
-                        break;
-                }
-                quaternion_sequence.push_back(fetch_quaternion);
-
-                return new_symbol;
+            if (indices_vector.size() != symbolEntry.index_record.size()) {
+                Diagnose::printError(Node::current_node->offset, "Invalid index/indices to fetch an element from array.");
             }
-            --searching_idx;
-        }
 
-        // not found
-        Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
-        exit(-1);
-        return -2;
+            int offset_calc_start_index = quaternion_sequence.size();
+            int memory_offset_var_index = calc_array_element_offset(indices_vector, symbolEntry.index_record);
+            int offset_calc_end_index = quaternion_sequence.size();
+
+            symbolEntry.is_used = true;
+            symbolEntry.last_use_offset = Node::current_node->offset;
+
+            int array_index = analyse_symbol_stack[searching_idx].symbol_index;
+            int new_symbol = get_temp_symbol(symbolEntry.data_type, false);
+            symbol_table[new_symbol].is_array = true; // when a symbol is both array and temp, means it is a reference of an element, maybe assigned
+
+            // index_record[0..1] represent the quaternion which calc offset
+            symbol_table[new_symbol].value.int_value = quaternion_sequence.size();
+            symbol_table[new_symbol].index_record.push_back(offset_calc_start_index);
+            symbol_table[new_symbol].index_record.push_back(offset_calc_end_index);
+
+            Quaternion fetch_quaternion{OP_INVALID, array_index, memory_offset_var_index, new_symbol};
+            switch (symbolEntry.data_type) {
+                case DT_BOOL:
+                    fetch_quaternion.op_code = OP_FETCH_BOOL;
+                    break;
+
+                case DT_INT:
+                    fetch_quaternion.op_code = OP_FETCH_INT;
+                    break;
+
+                case DT_FLOAT:
+                    fetch_quaternion.op_code = OP_FETCH_FLOAT;
+                    break;
+
+                case DT_DOUBLE:
+                    fetch_quaternion.op_code = OP_FETCH_DOUBLE;
+                    break;
+
+                default:
+                    throw "DEBUG: Invalid Data Type!";
+                    break;
+            }
+            quaternion_sequence.push_back(fetch_quaternion);
+
+            return new_symbol;
+        }
+        --searching_idx;
     }
+
+    // not found
+    Diagnose::printError(Node::current_node->offset, "Symbol " + Node::current_node->child_nodes_ptr[0]->content + " not defined.");
+    exit(-1);
+    return -2;
 }
 
 int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* return_values_ptr)
@@ -974,64 +1062,88 @@ int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* re
     return 0;
 }
 
-int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(int* return_values_ptr)
+int DecIndices__LeftSquareBrace_Expr_RightSquareBrace_DecIndices_post_function(int* return_values_ptr)
 {
-    int arg = Node::current_node->get_attribute_value(boolIndicesUsageAttr);
 
     SymbolEntry& symbol = symbol_table[return_values_ptr[1]];
 
-    if (arg == boolIndicesUsage_Declare) {
-        // in declaration
-
-        bool is_const_expr = symbol.is_const;
-        if (is_const_expr) {
-            if (symbol.data_type != DT_INT) {
-                Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-integer expression.");
-            }
-            else {
-                int expr_value = symbol.value.int_value;
-                if (expr_value <= 0) {
-                    Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-positive expression.");
-                }
-                else {
-                    Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
-                }
-            }
+    // in declaration
+    bool is_const_expr = symbol.is_const;
+    if (is_const_expr) {
+        if (symbol.data_type != DT_INT) {
+            Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-integer expression.");
         }
         else {
-            Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-const expression.");
+            int expr_value = symbol.value.int_value;
+            if (expr_value <= 0) {
+                Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-positive expression.");
+            }
+            else {
+                Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
+            }
         }
     }
     else {
-        // in reference
-        if (symbol.data_type == DT_FLOAT || symbol.data_type == DT_DOUBLE || symbol.data_type == DT_BOOL || symbol.data_type == DT_VOID || symbol.data_type == DT_NOT_DECIDED) {
-            Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot access an array with a non-integer expression.");
-        }
-        else {
-            Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
-        }
+        Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot declare an array with a non-const expression.");
     }
     return -1;
 }
 
-int Indices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr)
+int DecIndices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr)
 {
-    return Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_post_function(return_values_ptr);
+    return DecIndices__LeftSquareBrace_Expr_RightSquareBrace_DecIndices_post_function(return_values_ptr);
 }
 
-int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr)
+int UseIndices__LeftSquareBrace_Expr_RightSquareBrace_UseIndices_post_function(int* return_values_ptr)
 {
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Call);
-    // push 1 into stack means call a function
-//    semantic_action_stack.push_back(1);
+    SymbolEntry& symbol = symbol_table[return_values_ptr[1]];
 
-    return 0;
+    // in reference
+    if (symbol.data_type == DT_FLOAT || symbol.data_type == DT_DOUBLE || symbol.data_type == DT_BOOL || symbol.data_type == DT_VOID || symbol.data_type == DT_NOT_DECIDED) {
+        Diagnose::printError(Node::current_node->child_nodes_ptr[1]->offset, "Cannot access an array with a non-integer expression.");
+    }
+    else {
+        Node::current_node->attributes.emplace(intIndicesSizeIndexAttr, return_values_ptr[1]);
+    }
+    return -1;
 }
 
-int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_values_ptr)
+int UseIndices__LeftSquareBrace_Expr_RightSquareBrace_post_function(int* return_values_ptr)
+{
+    return UseIndices__LeftSquareBrace_Expr_RightSquareBrace_UseIndices_post_function(return_values_ptr);
+}
+
+
+//int Call__Function_LeftBrace_HereIsArgument_RightBrace_fore_function(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolFunctionNameUsageAttr, boolFunctionNameUsage_Call);
+//    // push 1 into stack means call a function
+////    semantic_action_stack.push_back(1);
+//
+//    return 0;
+//}
+
+int find_function(Node* id_ptr)
+{
+    // find function index according to id's content
+    string call_name = id_ptr->content;
+    for (int i = Function::function_table.size() - 1; i >= 0; --i) {
+        if (Function::function_table[i].name == call_name) {
+            // find
+            return i;
+        }
+    }
+
+    // not found
+    Diagnose::printError(id_ptr->offset, "Function " + id_ptr->content + " not found.");
+    return -2;
+}
+
+int Call__id_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_values_ptr)
 {
     // check args are matching parameters in definition
-    Function& current_function = Function::function_table[return_values_ptr[0]];
+    int func_idx = find_function(Node::current_node->child_nodes_ptr[0]);
+    Function& current_function = Function::function_table[func_idx];
 //    cout << current_function.name << " provide args " << return_values_ptr[2] << endl;
     if (return_values_ptr[2] != current_function.parameter_types.size()) {
         // todo throw error: NOT MATCH FUNCTION DECLARE
@@ -1065,24 +1177,27 @@ int Call__Function_LeftBrace_HereIsArgument_RightBrace_post_function(int* return
 
     // all matched
     // create a return temp var
-    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type, false);
+    int return_temp_var = get_temp_symbol(Function::function_table[func_idx].return_data_type, false);
 
-    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], return_values_ptr[2], return_temp_var};
+    Quaternion call_quaternion{OP_CALL, func_idx, return_values_ptr[2], return_temp_var};
     quaternion_sequence.push_back(call_quaternion);
 
     return return_temp_var;
 }
 
-int Call__Function_LeftBrace_RightBrace_post_function(int* return_values_ptr)
+int Call__id_LeftBrace_RightBrace_post_function(int* return_values_ptr)
 {
-    if (!Function::function_table[return_values_ptr[0]].parameter_types.empty()) {
-        Diagnose::printError(Node::current_node->offset, "Function " + Function::function_table[return_values_ptr[0]].name + " requires arguments.");
+    int func_idx = find_function(Node::current_node->child_nodes_ptr[0]);
+    Function& current_function = Function::function_table[func_idx];
+
+    if (!Function::function_table[func_idx].parameter_types.empty()) {
+        Diagnose::printError(Node::current_node->offset, "Function " + Function::function_table[func_idx].name + " requires arguments.");
     }
 
     // create a return temp var
-    int return_temp_var = get_temp_symbol(Function::function_table[return_values_ptr[0]].return_data_type, false);
+    int return_temp_var = get_temp_symbol(Function::function_table[func_idx].return_data_type, false);
 
-    Quaternion call_quaternion{OP_CALL, return_values_ptr[0], 0, return_temp_var};
+    Quaternion call_quaternion{OP_CALL, func_idx, 0, return_temp_var};
     quaternion_sequence.push_back(call_quaternion);
 
     return return_temp_var;
@@ -1118,12 +1233,12 @@ int Arguments__Argument_post_function(int* return_values_ptr)
     return 1;
 }
 
-int Argument__Variable_fore_function(int* return_values_ptr)
-{
-    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Reference); // means use var
-//    semantic_action_stack.push_back(1); // means use var
-    return 0;
-}
+//int Argument__Argument_Comma_Arguments_fore_function(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolVarUsageAttr, boolVarUsage_Reference); // means use var
+////    semantic_action_stack.push_back(1); // means use var
+//    return 0;
+//}
 
 int Argument__Variable_post_function(int* return_values_ptr)
 {
@@ -1257,6 +1372,11 @@ int Item__LeftBrace_Expr_RightBrace_post_function(int* return_values_ptr)
     return return_values_ptr[1];
 }
 
+int Item__VariableUse_post_action(int* return_values_ptr)
+{
+    return return_values_ptr[0];
+}
+
 int Comma__Comma_Comma_Assignment_post_action(int* return_values_ptr)
 {
     return return_values_ptr[2];
@@ -1374,12 +1494,12 @@ int Return__return_Semicolon_post_action(int* return_values_ptr)
     return -1;
 }
 
-int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_values_ptr)
-{
-    ++current_layer;
-
-    return 0;
-}
+//int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_fore_action(int* return_values_ptr)
+//{
+//    ++current_layer;
+//
+//    return 0;
+//}
 
 int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_values_ptr)
 {
@@ -1387,7 +1507,7 @@ int Compound__LeftCurlyBrace_Statements_RightCurlyBrace_post_action(int* return_
 
     --current_layer;
 
-    return return_values_ptr[1];
+    return return_values_ptr[2];
 }
 
 int Num__num_post_action(int* return_values_ptr)
@@ -1455,4 +1575,11 @@ int Num__false_post_action(int* return_values_ptr)
 //    emit(OP_LI_BOOL, false, -1, ret);
     symbol_table[ret].value.bool_value = false;
     return ret;
+}
+
+int Const__const_post_action(int* return_values_ptr)
+{
+    current_type_is_const = true;
+
+    return -1;
 }

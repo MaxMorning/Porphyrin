@@ -22,6 +22,7 @@ using namespace std;
 #define boolVarUsageAttr                (-1)
 #define boolFunctionNameUsageAttr       (-2)
 #define boolTypeUsageAttr               (-3)
+#define enumTypeValueAttr               (-4)
 #define boolIndicesUsageAttr            (-7)
 #define intIndicesSizeIndexAttr         (-8)
 

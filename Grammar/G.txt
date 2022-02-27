@@ -6,23 +6,29 @@ Declarations @ Declaration
 Declaration @ VarDeclaration
 Declaration @ FunDeclaration
 
+Const @ const
 VarDeclaration @ Type DeclaredVars ;
-VarDeclaration @ const Type DeclaredVars ;
+VarDeclaration @ Const Type DeclaredVars ;
 
 DeclaredVars @ DeclaredVar , DeclaredVars
 DeclaredVars @ DeclaredVar
 
-DeclaredVar @ Variable
-DeclaredVar @ Variable = Expr
+DeclaredVar @ id
+DeclaredVar @ id DecIndices
+DeclaredVar @ id = Expr
 
-Variable @ id
-Variable @ id Indices
+VariableUse @ id
+VariableUse @ id UseIndices
 
-Indices @ [ Expr ] Indices
-Indices @ [ Expr ]
+UseIndices @ [ Expr ] UseIndices
+UseIndices @ [ Expr ]
 
-FunDeclaration @ Type Function ( HereIsParameter ) Compound
-FunDeclaration @ Type Function ( ) Compound
+DecIndices @ [ Expr ] DecIndices
+DecIndices @ [ Expr ]
+
+FunDeclaration @ Type IdLeftBrace HereIsParameter ) Compound
+FunDeclaration @ Type IdLeftBrace ) Compound
+IdLeftBrace @ id (
 
 Type @ int
 Type @ float
@@ -30,16 +36,14 @@ Type @ double
 Type @ void
 Type @ bool
 
-
-Function @ id
-
 HereIsParameter @ void
 HereIsParameter @ Parameters
 
 Parameters @ Parameter , Parameters
 Parameters @ Parameter
 
-Parameter @ Type Variable
+Parameter @ Type id
+Parameter @ Type id DecIndices
 
 
 
@@ -56,8 +60,8 @@ Statement @ ;
 
 Expression @ Expr ;
 
-If @ if ( Expr ) Statement
-If @ if ( Expr ) Statement else Statement
+If @ if IncLayerFore ( Expr ) Statement
+If @ if IncLayerFore ( Expr ) Statement else Statement
 
 While @ while ( Expr ) Statement
 
@@ -65,7 +69,8 @@ Return @ return Expr ;
 Return @ return ;
 
 Compound @ { }
-Compound @ { Statements }
+Compound @ IncLayerFore { Statements }
+IncLayerFore @ $
 
 
 
@@ -108,12 +113,12 @@ MulSymbol @ /
 Item @ ! Item
 Item @ - Item
 Item @ ( Expr )
-Item @ Variable
+Item @ VariableUse
 Item @ Call
 Item @ Num
 
-Call @ Function ( HereIsArgument )
-Call @ Function ( )
+Call @ id ( HereIsArgument )
+Call @ id ( )
 
 HereIsArgument @ void
 HereIsArgument @ Arguments

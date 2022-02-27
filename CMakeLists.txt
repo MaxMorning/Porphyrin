@@ -19,4 +19,4 @@ add_executable(g--
         Utils/Syntax.cpp Include/Syntax.h
         Class/LR1Table.cpp Class/LR1Table.h
         Class/Node.cpp Class/Node.h
-        Utils/Semantic.cpp Utils/ControlStatement.cpp Include/Semantic.h Class/Diagnose.cpp Class/Diagnose.h Utils/ActionFunctionTable.cpp Utils/SemanticArrays.cpp Include/Optimize.h Utils/Optimize.cpp)
+        Utils/Semantic.cpp Utils/ControlStatement.cpp Include/Semantic.h Class/Diagnose.cpp Class/Diagnose.h Utils/ActionFunctionTable.cpp Utils/SemanticArrays.cpp Include/Optimize.h Utils/Optimize.cpp Include/x86Assemble.h Utils/x86Assemble.cpp)

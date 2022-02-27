@@ -108,3 +108,11 @@ int LR1item::is_LR1item_exist(LR1item item) {
     }
     return -1;
 }
+
+LR1item::LR1item(const LR1item &src) {
+    this->production_index = src.production_index;
+    this->foresee_char_index = src.foresee_char_index;
+    this->dot_position = src.dot_position;
+    this->index = src.index;
+    this->is_reduction = src.is_reduction;
+}

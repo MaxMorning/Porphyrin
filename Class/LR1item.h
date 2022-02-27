@@ -29,7 +29,7 @@ public:
     int get_foresee_char();
 
     LR1item();
-//    LR1item(const LR1item& src);
+    LR1item(const LR1item& src);
     LR1item(int nonterminal_index, int production_index, int dot_position, int foresee_char_index);
 
     static vector<int> foresee_char_buffer; // store the index of terminal chars

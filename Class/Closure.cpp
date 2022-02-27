@@ -68,6 +68,12 @@ void Closure::update()
                     tmp_LR1item.production_index = j;
                     tmp_LR1item.dot_position = 0;
                     tmp_LR1item.foresee_char_index = LR1item::foresee_char_buffer[k];
+
+                    // check is epsilon production
+                    if (Nonterminal::all_nonterminal_chars[tmp_LR1item.index].productions[tmp_LR1item.production_index].empty()) {
+                        tmp_LR1item.is_reduction = true;
+                    }
+
                     int position = LR1item::is_LR1item_exist(tmp_LR1item);
                     if(position == -1) {
                         LR1item::all_lr_1_item_set.push_back(new LR1item(tmp_LR1item));

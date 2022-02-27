@@ -106,6 +106,12 @@ void load_grammar_from_disk(const string& path)
             current_production.push_back(Nonterminal::all_nonterminal_chars[nonterminal_in_production_idx]);
         }
 
+        // set epsilon in first set
+        if (current_production.size() == 1 && current_production[0].is_terminal && current_production[0].index == TerminalChar::get_index("EPSILON")) {
+            Nonterminal::all_nonterminal_chars[target_nonterminal_index].epsilon_in_firstset = true;
+            current_production.clear();
+        }
+
         Nonterminal::all_nonterminal_chars[target_nonterminal_index].productions.push_back(current_production);
     }
 
@@ -192,6 +198,17 @@ int is_closure_exist() {
     return -1;
 }
 
+bool check_is_epsilon_production(int nonterminal_char_index, int production_index)
+{
+    auto& production = Nonterminal::all_nonterminal_chars[nonterminal_char_index].productions[production_index];
+    if (production.empty()) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 void get_closure() {
 
     Closure tmp_closure;
@@ -226,7 +243,14 @@ void get_closure() {
                 // C -> [D·c, b]
                 if (l_now->dot_position < Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() && Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index][l_now->dot_position].is_terminal && Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index][l_now->dot_position].index == terminal_char.index) {
                     LR1item tmp_LR1item(l_now->index, l_now->production_index, l_now->dot_position + 1, l_now->foresee_char_index);
-                    tmp_LR1item.is_reduction = (l_now->dot_position == Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() - 1);
+                    if (check_is_epsilon_production(l_now->index, l_now->production_index)) {
+                        tmp_LR1item.dot_position = 0;
+                        tmp_LR1item.is_reduction = true;
+                    }
+                    else {
+                        tmp_LR1item.is_reduction = (l_now->dot_position == Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() - 1);
+                    }
+
                     int position = LR1item::is_LR1item_exist(tmp_LR1item);
                     if (position == -1) {
                         LR1item::all_lr_1_item_set.push_back(new LR1item(tmp_LR1item));
@@ -273,7 +297,14 @@ void get_closure() {
                 // C -> [D·c, b]
                 if (l_now->dot_position < Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() && !Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index][l_now->dot_position].is_terminal && Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index][l_now->dot_position].index == nonterminal.index) {
                     LR1item tmp_LR1item(l_now->index, l_now->production_index, l_now->dot_position + 1, l_now->foresee_char_index);
-                    tmp_LR1item.is_reduction = (l_now->dot_position == Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() - 1);
+
+                    if (check_is_epsilon_production(l_now->index, l_now->production_index)) {
+                        tmp_LR1item.dot_position = 0;
+                        tmp_LR1item.is_reduction = true;
+                    }
+                    else {
+                        tmp_LR1item.is_reduction = (l_now->dot_position == Nonterminal::all_nonterminal_chars[l_now->index].productions[l_now->production_index].size() - 1);
+                    }
                     int position = LR1item::is_LR1item_exist(tmp_LR1item);
                     if (position == -1) {
                         LR1item::all_lr_1_item_set.push_back(new LR1item(tmp_LR1item));
@@ -331,6 +362,9 @@ void get_action()
         for (int j = 0; j < Closure::all_closure_set[i].items_number.size(); ++j) {
             LR1item* l_now = LR1item::all_lr_1_item_set[Closure::all_closure_set[i].items_number[j]];
             // reduction
+            if (Nonterminal::all_nonterminal_chars[l_now->index].token == "B") {
+                cout << "B : " << l_now->is_reduction << endl;
+            }
             if(l_now->is_reduction) {
                 Closure::all_closure_set[i].trans[l_now->foresee_char_index].transfer_type = 0;
                 Closure::all_closure_set[i].trans[l_now->foresee_char_index].transfer_reduction_index = l_now->production_index;
@@ -523,6 +557,11 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
                 state_stack.pop_back();
                 temp_parent_node_ptr->child_nodes_ptr.push_back(node_stack.back());
                 node_stack.pop_back();
+            }
+
+            if (reduction_cnt == 0) {
+                // reduction of an epsilon production
+                temp_parent_node_ptr->child_nodes_ptr.push_back(new Node(Lexicon("$", 1, temp_parent_node_ptr->offset)));
             }
             // reverse child nodes
             reverse(temp_parent_node_ptr->child_nodes_ptr.begin(), temp_parent_node_ptr->child_nodes_ptr.end());

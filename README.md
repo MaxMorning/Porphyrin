@@ -7,13 +7,15 @@ A C-like language compiler
     Declaration
     VarDeclaration
     FunDeclaration
+    Const
     Type
     DeclaredVars
     DeclaredVar
-    Variable
+    DecIndices
     Expr
-    Indices
-    Function
+    VariableUse
+    UseIndices
+    IdLeftBrace
     HereIsParameter
     Compound
     Parameters
@@ -24,6 +26,7 @@ A C-like language compiler
     If
     While
     Return
+    IncLayerFore
     Comma
     Assignment
     LogicalOr
@@ -40,3 +43,17 @@ A C-like language compiler
     HereIsArgument
     Arguments
     Argument
+
+## Memory organization
+### Stack Segment
+Stack grow from High to Low  
+
+| Address | Content     |
+|---------|-------------|
+| Low     |             |
+|         | temp vars   |
+|         | def vars    |
+|         | old ebp     |
+|         | return addr |
+|         | arguments   |
+| High    |             |
