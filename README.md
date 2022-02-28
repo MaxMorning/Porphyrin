@@ -26,7 +26,10 @@ A C-like language compiler
     If
     While
     Return
-    IncLayerFore
+    IfSymbol
+    RightBraceSetIfWhile
+    WhileSymbol
+    LeftCurlyBraceFore
     Comma
     Assignment
     LogicalOr

@@ -205,6 +205,10 @@ int get_temp_symbol(DATA_TYPE_ENUM data_type, bool is_const);
 
 void back_patch(int list, int addr);
 
+extern bool in_if_while_condition;
+
+bool back_patch_in_general(int return_symbol_index);
+
 int emit(OP_CODE op, int src1, int src2, int result);
 
 void clear_symbol_stack();

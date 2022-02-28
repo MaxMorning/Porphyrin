@@ -60,17 +60,22 @@ Statement @ ;
 
 Expression @ Expr ;
 
-If @ if IncLayerFore ( Expr ) Statement
-If @ if IncLayerFore ( Expr ) Statement else Statement
+If @ IfSymbol ( Expr RightBraceSetIfWhile Statement
+If @ IfSymbol ( Expr RightBraceSetIfWhile Statement else Statement
 
-While @ while ( Expr ) Statement
+RightBraceSetIfWhile @ )
+
+IfSymbol @ if
+
+While @ WhileSymbol ( Expr RightBraceSetIfWhile Statement
+WhileSymbol @ while
 
 Return @ return Expr ;
 Return @ return ;
 
 Compound @ { }
-Compound @ IncLayerFore { Statements }
-IncLayerFore @ $
+Compound @ LeftCurlyBraceFore Statements }
+LeftCurlyBraceFore @ {
 
 
 

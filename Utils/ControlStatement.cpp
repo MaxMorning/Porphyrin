@@ -55,6 +55,8 @@ void back_patch(int list, int addr)
 
 bool wont_be_backpatched()
 {
+//    return true;
+
     Node* current;
     Node* parent = Node::current_node;
     while (true)
@@ -110,8 +112,9 @@ int If__if_LeftBrace_Expr_RightBrace_Statement_post_action(int* return_values_pt
     return -1;
 }
 
-int If__if_LeftBrace_Expr_RightBrace_Statement_else_Statement_fore_action(int* return_values_ptr)
+int IfSymbol__if_action(int* return_values_ptr)
 {
+    in_if_while_condition = true;
     ++current_layer;
 
     return -1;
@@ -209,12 +212,12 @@ int LogicalOr__LogicalOr_LogicalOR_LogicalAnd_post_action(int* return_values_ptr
     back_patch(E1->falselist, E2->quad);
     Node::current_node->truelist = merge(E1->truelist, E2->truelist);
     Node::current_node->falselist = E2->falselist;
-    if (wont_be_backpatched())
-    {
-        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
-        emit(OP_CODE::OP_JMP, -1, -1, 2);
-        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
-    }
+//    if (wont_be_backpatched())
+//    {
+//        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+//        emit(OP_CODE::OP_JMP, -1, -1, 2);
+//        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+//    }
 
     return ret;
 }
@@ -259,12 +262,13 @@ int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_
     back_patch(E1->truelist, E2->quad);
     Node::current_node->truelist = E2->truelist;
     Node::current_node->falselist = merge(E1->falselist, E2->falselist);
-    if (wont_be_backpatched())
-    {
-        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
-        emit(OP_CODE::OP_JMP, -1, -1, 2);
-        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
-    }
+//    if (wont_be_backpatched())
+//    {
+//        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+//        emit(OP_CODE::OP_JMP, -1, -1, 2);
+//        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+//    }
+    cout << "RetAnd " << ret << endl;
 
     return ret;
 }
@@ -296,12 +300,79 @@ int Item__LogicalNOT_Item_post_action(int* return_values_ptr)
     }
     Node::current_node->truelist = E->falselist;
     Node::current_node->falselist = E->truelist;
-    if (wont_be_backpatched())
-    {
-        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
-        emit(OP_CODE::OP_JMP, -1, -1, 2);
-        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
-    }
+//    if (wont_be_backpatched())
+//    {
+//        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
+//        emit(OP_CODE::OP_JMP, -1, -1, 2);
+//        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
+//    }
 
     return ret;
+}
+
+int RightBraceSetIfWhile__rightBrace(int* return_value_ptr)
+{
+    in_if_while_condition = false;
+    return -1;
+}
+
+int WhileSymbol__while_action(int* return_value_ptr)
+{
+    in_if_while_condition = true;
+
+    ++current_layer;
+    return -1;
+}
+
+
+bool back_patch_in_general(int return_symbol_index)
+{
+    if (in_if_while_condition) {
+        return false;
+    }
+
+    // find first meaningful node
+    Node* search_node_ptr = Node::current_node;
+    while (search_node_ptr->child_nodes_ptr.size() == 1) {
+        search_node_ptr = search_node_ptr->child_nodes_ptr[0];
+    }
+
+    if (search_node_ptr->child_nodes_ptr.size() == 2) {
+        if (search_node_ptr->child_nodes_ptr[0]->content == "!") {
+            cout << "Hit0" << endl;
+            // Item -> ! Item
+            // need back patch
+            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, return_symbol_index));
+            emit(OP_CODE::OP_JMP, -1, -1, 2);
+            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, return_symbol_index));
+
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else if (search_node_ptr->child_nodes_ptr.size() == 3) {
+        if (search_node_ptr->child_nodes_ptr[1]->content == "&&" || search_node_ptr->child_nodes_ptr[1]->content == "||") {
+            cout << "Hit0" << endl;
+            // need back patch
+            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, return_symbol_index));
+            emit(OP_CODE::OP_JMP, -1, -1, 2);
+            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, return_symbol_index));
+
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+}
+
+int Assignment__LogicalOr_post(int* return_value_ptr)
+{
+    back_patch_in_general(return_value_ptr[0]);
+    return return_value_ptr[0];
 }

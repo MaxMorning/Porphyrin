@@ -18,6 +18,7 @@ vector<Quaternion> quaternion_sequence;
 vector<SymbolEntry> symbol_table;
 vector<StackEntry> analyse_symbol_stack;
 int current_layer = 0;
+bool in_if_while_condition = false;
 //vector<int> semantic_action_stack;
 
 // Semantic part
@@ -312,7 +313,7 @@ int always_return_0(int* return_values_ptr)
     }
 }
 
-int IncLayer(int* return_values_ptr)
+int LeftCurlyBraceFore_left_curly_brace_post_action(int* return_values_ptr)
 {
     ++current_layer;
     return 0;

@@ -156,6 +156,7 @@ int Comma__Comma_Comma_Assignment_post_action(int* return_values_ptr);
 int Left__LeftBrace_Comma_Comma_Left_RightBrace_post_action(int* return_values_ptr);
 
 int Assignment__LogicalOr_ASSIGNMENT_Assignment_post_action(int* return_values_ptr);
+int Assignment__LogicalOr_post(int* return_value_ptr);
 
 int Return__return_Expr_Semicolon_post_action(int* return_values_ptr);
 
@@ -170,7 +171,12 @@ int Num__false_post_action(int* return_values_ptr);
 
 int Const__const_post_action(int* return_values_ptr);
 
-int IncLayer(int* return_values_ptr);
+int LeftCurlyBraceFore_left_curly_brace_post_action(int* return_values_ptr);
+
+int IfSymbol__if_action(int* return_values_ptr);
+int WhileSymbol__while_action(int* return_value_ptr);
+
+int RightBraceSetIfWhile__rightBrace(int* return_value_ptr);
 
 ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
         {
@@ -463,9 +469,24 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                         {always_return_0, always_return_0}
                 },
 
-                // IncLayerFore
+                // IfSymbol
                 {
-                        {always_return_0, IncLayer}
+                        {always_return_0, IfSymbol__if_action}
+                },
+
+                // RightBraceSetIfWhile
+                {
+                        {always_return_0, RightBraceSetIfWhile__rightBrace}
+                },
+
+                // WhileSymbol
+                {
+                        {always_return_0, WhileSymbol__while_action}
+                },
+
+                // LeftCurlyBraceFore
+                {
+                        {always_return_0, LeftCurlyBraceFore_left_curly_brace_post_action}
                 },
 
                 // Comma
@@ -483,7 +504,7 @@ ActionFunction action_function_ptr[NONTERMINAL_CNT][MAX_REDUCTION][2] =
                 // Assignment
                 {
                         {always_return_0, Assignment__LogicalOr_ASSIGNMENT_Assignment_post_action},
-                        {always_return_0, always_return_0},
+                        {always_return_0, Assignment__LogicalOr_post},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
                         {always_return_0, always_return_0},
