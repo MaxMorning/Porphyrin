@@ -41,6 +41,6 @@ bool generate_lr1_table();
 
 // syntax analysis
 
-bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root);
+bool syntax_analysis(string processed_code, Node*& root);
 
 #endif //PORPHYRIN_SYNTAX_H

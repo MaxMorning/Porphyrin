@@ -511,11 +511,12 @@ bool generate_lr1_table()
     return true;
 }
 
-bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
+bool syntax_analysis(string processed_code, Node*& root)
 {
+    cout << "Length : " << processed_code.size() << endl;
     // assume the entrance of DFA is Closure 0, of which index is 0
     int current_state = 0;
-    int ana_index = 0;
+//    int ana_index = 0;
 
     int reduction_idx;
     Nonterminal* reduction_result_ptr;
@@ -530,11 +531,18 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
     // assume S' is the first nonterminal
     vector<Node*> node_stack;
 
-    while (current_state >= 0 && ana_index < lex_ana_result.size()) {
+    int processing_idx = -1;
+    Lexicon current_lex(EPSILON, "", 0);
+
+    while (current_state >= 0) {
+        if (current_lex.lex_type == EPSILON) {
+            current_lex = get_next_lexicon(processing_idx, processed_code);
+            cout << current_lex.lex_content << endl;
+        }
         // TODO NOTICE
         // lex_ana_result[ana_index].lex_type is only for debugging
         // for real use, it should be lex_ana_result[ana_index].convert_to_terminal_index
-        current_state = LR1Table::analysis(state_stack.back(), TerminalChar::all_terminal_chars[lex_ana_result[ana_index].convert_to_terminal_index()],
+        current_state = LR1Table::analysis(state_stack.back(), TerminalChar::all_terminal_chars[current_lex.convert_to_terminal_index()],
                                            reduction_idx, reduction_result_ptr);
         if (current_state == -2) {
             break;
@@ -545,11 +553,11 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
             // TODO NOTICE
             // lex_ana_result[ana_index].lex_type is only for debugging
             // for real use, it should be lex_ana_result[ana_index].convert_to_terminal_index
-            analysis_stack.push_back(TerminalChar::all_terminal_chars[lex_ana_result[ana_index].convert_to_terminal_index()]);
+            analysis_stack.push_back(TerminalChar::all_terminal_chars[current_lex.convert_to_terminal_index()]);
             state_stack.push_back(current_state);
-            node_stack.push_back(new Node(lex_ana_result[ana_index]));
+            node_stack.push_back(new Node(current_lex));
             semantic_value_stack.push_back(-1);
-            ++ana_index;
+            current_lex = get_next_lexicon(processing_idx, processed_code);
         }
         else {
             // reduction
@@ -615,7 +623,7 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
 #endif
 
             if (analysis_stack.size() == 1 && analysis_stack[0].index == 0 && !analysis_stack[0].is_terminal
-                && ana_index == lex_ana_result.size() - 1 && lex_ana_result[ana_index].lex_type == END_SIGNAL) {
+                && current_lex.lex_type == END_SIGNAL) {
                 current_state = -2;
                 break;
             }
@@ -632,11 +640,12 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
             cout << c.token << ' ';
         }
 
-        cout << "\t\t\t\t\tRemain: ";
-
-        for (int i = ana_index; i < lex_ana_result.size(); ++i) {
-            cout << lex_ana_result[i].lex_content << ' ';
-        }
+        cout << "\t\t\t\t\tNext: ";
+        cout << current_lex.lex_content << ' ';
+//
+//        for (int i = ana_index; i < lex_ana_result.size(); ++i) {
+//            cout << lex_ana_result[i].lex_content << ' ';
+//        }
 
         cout << "\t\t\t\tNode: ";
         for (Node* node : node_stack) {

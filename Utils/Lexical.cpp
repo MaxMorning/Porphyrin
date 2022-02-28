@@ -10,6 +10,170 @@
 #include "Include/Lexical.h"
 #include "Class/Diagnose.h"
 
+Lexicon get_next_lexicon(int& processing_idx, string processed_code)
+{
+    string buffer_str = "";
+    size_t processed_length = processed_code.length();
+
+    while (processing_idx < (int)processed_length) {
+        ++processing_idx;
+        if (is_valid_in_var_fun(processed_code[processing_idx])) {
+            buffer_str += processed_code[processing_idx];
+        }
+        else {
+            // parse current content in lexical buffer
+            if (!buffer_str.empty()) {
+                Lexicon temp_lex = Lexicon(buffer_str.c_str(), buffer_str.size(), processing_idx);
+                buffer_str.clear();
+                --processing_idx;
+                return temp_lex;
+            }
+
+            switch (processed_code[processing_idx]) {
+                case '=':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '=') {
+                        ++processing_idx;
+                        return Lexicon(EQUAL, "==", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(ASSIGNMENT, "=", processing_idx);
+                    }
+                    break;
+
+                case '+':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '+') {
+                        ++processing_idx;
+                        return Lexicon(INCREASE, "++", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(ADD, "+", processing_idx);
+                    }
+                    break;
+
+                case '-':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '-') {
+                        ++processing_idx;
+                        return Lexicon(DECREASE, "--", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(MINUS, "-", processing_idx);
+                    }
+                    break;
+
+                case '*':
+                    return Lexicon(STAR, "*", processing_idx);
+                    break;
+
+                case '/':
+                    return Lexicon(DIV, "/", processing_idx);
+                    break;
+
+                case '>':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '=') {
+                        ++processing_idx;
+                        return Lexicon(GREAT_EQUAL, ">=", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(GREAT, ">", processing_idx);
+                    }
+                    break;
+
+                case '<':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '=') {
+                        ++processing_idx;
+                        return Lexicon(LESS_EQUAL, "<=", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(LESS, "<", processing_idx);
+                    }
+                    break;
+
+                case '!':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '=') {
+                        ++processing_idx;
+                        return Lexicon(NOT_EQUAL, "!=", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(LOGIC_NOT, "!", processing_idx);
+                    }
+                    break;
+
+                case '&':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '&') {
+                        ++processing_idx;
+                        return Lexicon(LOGIC_AND, "&&", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(BIT_AND, "&", processing_idx);
+                    }
+                    break;
+
+                case '|':
+                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '|') {
+                        ++processing_idx;
+                        return Lexicon(LOGIC_OR, "||", processing_idx - 1);
+                    }
+                    else {
+                        return Lexicon(BIT_OR, "|", processing_idx);
+                    }
+                    break;
+
+                case ';':
+                    return Lexicon(SEMICOLON, ";", processing_idx);
+                    break;
+
+                case ',':
+                    return Lexicon(COMMA, ",", processing_idx);
+                    break;
+
+                case '(':
+                    return Lexicon(LEFT_BRACE, "(", processing_idx);
+                    break;
+
+                case '[':
+                    return Lexicon(LEFT_SQUARE_BRACE, "[", processing_idx);
+                    break;
+
+                case ']':
+                    return Lexicon(RIGHT_SQUARE_BRACE, "]", processing_idx);
+                    break;
+
+                case ')':
+                    return Lexicon(RIGHT_BRACE, ")", processing_idx);
+                    break;
+
+                case '{':
+                    return Lexicon(LEFT_CURLY_BRACE, "{", processing_idx);
+                    break;
+
+                case '}':
+                    return Lexicon(RIGHT_CURLY_BRACE, "}", processing_idx);
+                    break;
+
+                case '\n':
+                    break;
+
+                case '$':
+                    return Lexicon(EPSILON, "$", processing_idx);
+                    break;
+
+                case '#':
+                    return Lexicon(END_SIGNAL, "#", processing_idx);
+                    // todo break the loop(not implemented because the PreProcessor is not implemented completely)
+                    break;
+
+                case ' ':
+                    break;
+
+                default:
+                    Diagnose::printError(processing_idx, "Unrecognized character here.");
+                    return Lexicon(END_SIGNAL, "#", processing_idx);
+            }
+        }
+    }
+
+    return Lexicon(END_SIGNAL, "###", processing_idx);
+}
 
 vector<Lexicon> lexical_analysis(string processed_code)
 {
@@ -73,24 +237,6 @@ vector<Lexicon> lexical_analysis(string processed_code)
                     break;
 
                 case '/':
-//                    if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '/') {
-//                        // line comment
-//                        processing_idx += 2;
-//                        while (processing_idx < processed_length && (processed_code[processing_idx] != '\n' && processed_code[processing_idx] != '#')) {
-//                            ++processing_idx;
-//                        }
-//                    }
-//                    else if (processing_idx + 1 < processed_length && processed_code[processing_idx + 1] == '*') {
-//                        // block comment
-//                        processing_idx += 2;
-//                        while (processing_idx < processed_length - 1 && (processed_code[processing_idx] != '*' || processed_code[processing_idx + 1] != '/')) {
-//                            ++processing_idx;
-//                        }
-//                        ++processing_idx;
-//                    }
-//                    else {
-//                        result_vector.emplace_back(DIV, "");
-//                    }
                     result_vector.emplace_back(DIV, "/", processing_idx);
                     break;
 
@@ -223,7 +369,7 @@ bool is_valid_in_var_fun(char c) {
     return is_digit(c) || is_letter(c) || c == '_';
 }
 
-Lexicon::Lexicon(char* lexical_buffer, size_t buffer_size, int processing_idx) {
+Lexicon::Lexicon(const char* lexical_buffer, size_t buffer_size, int processing_idx) {
     // todo match key words
     if (buffer_size > 0) {
         lex_content = string(lexical_buffer, buffer_size);

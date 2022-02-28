@@ -76,13 +76,13 @@ int main(int argc, char* argv[])
     string processed_code_bytes = pre_process(load_buffer);
     Diagnose::setProcessed(processed_code_bytes);
 
-    // Lexical Analysis
-    lex_result_vector = lexical_analysis(processed_code_bytes);
-
-    if (!lex_result_vector.empty() && lex_result_vector.back().lex_type != END_SIGNAL) {
-        cerr << "LEX CAN'T RECOGNIZE" << endl;
-        return -1;
-    }
+//    // Lexical Analysis
+//    lex_result_vector = lexical_analysis(processed_code_bytes);
+//
+//    if (!lex_result_vector.empty() && lex_result_vector.back().lex_type != END_SIGNAL) {
+//        cerr << "LEX CAN'T RECOGNIZE" << endl;
+//        return -1;
+//    }
 
 #ifdef DEBUG
 //    lex_result_vector.clear();
@@ -112,7 +112,7 @@ int main(int argc, char* argv[])
 #endif
 
     Node* root = nullptr; // initial with anything
-    if (!syntax_analysis(lex_result_vector, root)) {
+    if (!syntax_analysis(processed_code_bytes, root)) {
         cerr << "CODE_WRONG" << endl;
         return -1;
     }

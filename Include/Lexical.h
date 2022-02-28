@@ -76,7 +76,7 @@ struct Lexicon {
     string lex_content;
     int offset;
 
-    Lexicon(char* lexical_buffer, size_t buffer_size, int processing_idx);
+    Lexicon(const char* lexical_buffer, size_t buffer_size, int processing_idx);
     Lexicon(int type, string token, int processing_idx);
 
     string get_type() const;
@@ -87,6 +87,8 @@ vector<Lexicon> lexical_analysis(string processed_code);
 bool is_digit(char c);
 bool is_letter(char c);
 bool is_valid_in_var_fun(char c);
+
+Lexicon get_next_lexicon(int& processing_idx, string processed_code);
 
 void print_lexical_result(const vector<Lexicon>& result_vector);
 #endif //PORPHYRIN_LEXICAL_H
