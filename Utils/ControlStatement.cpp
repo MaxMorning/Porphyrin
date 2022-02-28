@@ -53,32 +53,32 @@ void back_patch(int list, int addr)
     }
 }
 
-bool wont_be_backpatched()
-{
-//    return true;
-
-    Node* current;
-    Node* parent = Node::current_node;
-    while (true)
-    {
-        current = parent;
-        parent = current->parent;
-        if (parent->child_nodes_ptr[0]->content == "(")
-            continue;
-        else if (parent->child_nodes_ptr.size() > 1)
-            break;
-    }
-    string child0 = parent->child_nodes_ptr[0]->content;
-    string chiid1 = parent->child_nodes_ptr[1]->content;
-    if (child0 == "if" || child0 == "while" || child0 == "!" || chiid1 == "&&" || chiid1 == "||")
-    {
-        return 0;
-    }
-    else
-    {
-        return 1;
-    }
-}
+//bool wont_be_backpatched()
+//{
+////    return true;
+//
+//    Node* current;
+//    Node* parent = Node::current_node;
+//    while (true)
+//    {
+//        current = parent;
+//        parent = current->parent;
+//        if (parent->child_nodes_ptr[0]->content == "(")
+//            continue;
+//        else if (parent->child_nodes_ptr.size() > 1)
+//            break;
+//    }
+//    string child0 = parent->child_nodes_ptr[0]->content;
+//    string chiid1 = parent->child_nodes_ptr[1]->content;
+//    if (child0 == "if" || child0 == "while" || child0 == "!" || chiid1 == "&&" || chiid1 == "||")
+//    {
+//        return 0;
+//    }
+//    else
+//    {
+//        return 1;
+//    }
+//}
 
 
 //Semantic Action of Control Statement
@@ -342,9 +342,15 @@ bool back_patch_in_general(int return_symbol_index)
             cout << "Hit0" << endl;
             // Item -> ! Item
             // need back patch
-            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, return_symbol_index));
+            int new_const_true = get_temp_symbol(DT_BOOL, true);
+            symbol_table[new_const_true].value.bool_value = true;
+
+            int new_const_false = get_temp_symbol(DT_BOOL, true);
+            symbol_table[new_const_false].value.bool_value = false;
+
+            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_ASSIGNMENT, new_const_true, -1, return_symbol_index));
             emit(OP_CODE::OP_JMP, -1, -1, 2);
-            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, return_symbol_index));
+            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_ASSIGNMENT, new_const_false, -1, return_symbol_index));
 
             return true;
         }
@@ -356,9 +362,15 @@ bool back_patch_in_general(int return_symbol_index)
         if (search_node_ptr->child_nodes_ptr[1]->content == "&&" || search_node_ptr->child_nodes_ptr[1]->content == "||") {
             cout << "Hit0" << endl;
             // need back patch
-            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, return_symbol_index));
+            int new_const_true = get_temp_symbol(DT_BOOL, true);
+            symbol_table[new_const_true].value.bool_value = true;
+
+            int new_const_false = get_temp_symbol(DT_BOOL, true);
+            symbol_table[new_const_false].value.bool_value = false;
+
+            back_patch(search_node_ptr->truelist, emit(OP_CODE::OP_ASSIGNMENT, new_const_true, -1, return_symbol_index));
             emit(OP_CODE::OP_JMP, -1, -1, 2);
-            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, return_symbol_index));
+            back_patch(search_node_ptr->falselist, emit(OP_CODE::OP_ASSIGNMENT, new_const_false, -1, return_symbol_index));
 
             return true;
         }
