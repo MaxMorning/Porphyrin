@@ -67,6 +67,7 @@ public:
     int quad, nextlist;
     int truelist, falselist;
     int semantic_action();
+    int semantic_action_one_pass(int* child_return_value);
 
     int get_attribute_value(int key);
 

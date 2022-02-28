@@ -127,7 +127,8 @@ int main(int argc, char* argv[])
 #endif
 
     // Semantic part
-    semantic_analysis(root);
+//    semantic_analysis(root);
+    semantic_analysis_post();
 
 #ifdef SEMANTIC_DEBUG
     print_quaternion_sequence(quaternion_sequence);

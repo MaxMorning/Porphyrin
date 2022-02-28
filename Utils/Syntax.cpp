@@ -23,6 +23,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <assert.h>
+#include "Include/Semantic.h"
 
 using namespace std;
 
@@ -521,6 +522,7 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
 
     vector<Character> analysis_stack;
     vector<int> state_stack;
+    vector<int> semantic_value_stack;
 
     state_stack.push_back(0);
 
@@ -546,6 +548,7 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
             analysis_stack.push_back(TerminalChar::all_terminal_chars[lex_ana_result[ana_index].convert_to_terminal_index()]);
             state_stack.push_back(current_state);
             node_stack.push_back(new Node(lex_ana_result[ana_index]));
+            semantic_value_stack.push_back(-1);
             ++ana_index;
         }
         else {
@@ -575,6 +578,32 @@ bool syntax_analysis(vector<Lexicon> lex_ana_result, Node*& root)
 
             current_state = LR1Table::nonterminal_transfer_table[state_stack.back()][reduction_result_ptr->index];
             state_stack.push_back(current_state);
+
+
+            // semantic action
+            if (temp_parent_node_ptr->child_nodes_ptr.size() == 1 && temp_parent_node_ptr->child_nodes_ptr[0]->is_terminal) {
+                temp_parent_node_ptr->quad = quaternion_sequence.size();
+            }
+            else {
+                // find left child non terminal
+                temp_parent_node_ptr->quad = -1;
+                for (Node* child_ptr : temp_parent_node_ptr->child_nodes_ptr) {
+                    if (!child_ptr->is_terminal) {
+                        temp_parent_node_ptr->quad = child_ptr->quad;
+                        break;
+                    }
+                }
+                if (temp_parent_node_ptr->quad == -1) {
+                    temp_parent_node_ptr->quad = quaternion_sequence.size();
+                }
+            }
+
+            int ret_value = temp_parent_node_ptr->semantic_action_one_pass(&(semantic_value_stack[semantic_value_stack.size() - temp_parent_node_ptr->child_nodes_ptr.size()]));
+            for (int i = 0; i < temp_parent_node_ptr->child_nodes_ptr.size(); ++i) {
+                assert(!semantic_value_stack.empty());
+                semantic_value_stack.pop_back();
+            }
+            semantic_value_stack.push_back(ret_value);
 
 #ifdef DEBUG
             cout << reduction_result_ptr->token << " <- ";

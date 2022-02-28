@@ -61,12 +61,43 @@ int Node::semantic_action()
     return ret;
 }
 
+int Node::semantic_action_one_pass(int* child_return_value)
+{
+    // post
+    Node::current_node = this;
+    if (this->child_nodes_ptr[0]->content == "(")
+    {
+        this->truelist = this->child_nodes_ptr[1]->truelist;
+        this->falselist = this->child_nodes_ptr[1]->falselist;
+    }
+    else if (this->child_nodes_ptr[0]->is_terminal)
+    {
+        this->truelist = -1;
+        this->falselist = -1;
+    }
+    else
+    {
+        this->truelist = this->child_nodes_ptr[0]->truelist;
+        this->falselist = this->child_nodes_ptr[0]->falselist;
+    }
+    int ret = (*action_function_ptr[this->non_terminal_idx][this->reduction_idx][1])(child_return_value);
+    this->nextlist = quaternion_sequence.size();
+
+    return ret;
+}
+
 void semantic_analysis(Node* root)
 {
     for (Nonterminal& nonterminal : Nonterminal::all_nonterminal_chars) {
         cout << nonterminal.token << endl;
     }
     root->semantic_action();
+    check_unused();
+    Diagnose::printStream();
+}
+
+void semantic_analysis_post()
+{
     check_unused();
     Diagnose::printStream();
 }
@@ -1057,11 +1088,11 @@ int VariableUse__id_Indices_post_function(int* return_values_ptr)
     return -2;
 }
 
-int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* return_values_ptr)
-{
-    Node::current_node->child_nodes_ptr[3]->attributes.emplace(boolIndicesUsageAttr, Node::current_node->get_attribute_value(boolIndicesUsageAttr));
-    return 0;
-}
+//int Indices__LeftSquareBrace_Expr_RightSquareBrace_Indices_fore_function(int* return_values_ptr)
+//{
+//    Node::current_node->child_nodes_ptr[3]->attributes.emplace(boolIndicesUsageAttr, Node::current_node->get_attribute_value(boolIndicesUsageAttr));
+//    return 0;
+//}
 
 int DecIndices__LeftSquareBrace_Expr_RightSquareBrace_DecIndices_post_function(int* return_values_ptr)
 {

@@ -360,7 +360,7 @@ bool back_patch_in_general(int return_symbol_index)
     }
     else if (search_node_ptr->child_nodes_ptr.size() == 3) {
         if (search_node_ptr->child_nodes_ptr[1]->content == "&&" || search_node_ptr->child_nodes_ptr[1]->content == "||") {
-            cout << "Hit0" << endl;
+            cout << "Hit1" << endl;
             // need back patch
             int new_const_true = get_temp_symbol(DT_BOOL, true);
             symbol_table[new_const_true].value.bool_value = true;

@@ -196,6 +196,8 @@ extern vector<StackEntry> analyse_symbol_stack;
 
 void semantic_analysis(Node* root);
 
+void semantic_analysis_post();
+
 void check_unused();
 
 void print_quaternion_sequence(vector<Quaternion> sequence);
