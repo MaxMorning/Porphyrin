@@ -169,7 +169,8 @@ struct SymbolEntry {
     ValueType value; // use 64 bit to store the value, can be any data type
 
     // i386 arch
-    // if is global var or array var, can get variable in [memory_offset]eip, else get in [memory_offset]ebp .
+    // if is local var or array var, can get variable in [ebp + memory_offset] / [rbp + memory_offset] .
+    // if is global, it will be stored in DataSegment, which is decided by assembler.
     int memory_offset;
 };
 

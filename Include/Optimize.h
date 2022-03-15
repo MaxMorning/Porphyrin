@@ -53,6 +53,9 @@ struct DAGNode {
     int symbol_index;
 };
 
+extern vector<BaseBlock> base_blocks;
+
+void split_base_blocks(vector<Quaternion> quaternion_sequence);
 
 extern vector<Quaternion> optimized_sequence;
 void optimize_IR(vector<Quaternion> quaternion_sequence);

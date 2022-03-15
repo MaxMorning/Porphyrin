@@ -16,6 +16,7 @@
 #include "Include/Semantic.h"
 #include "Include/Optimize.h"
 #include "Class/Diagnose.h"
+#include "Include/x86Assemble.h"
 
 #define LOAD_BUFFER_SIZE 4096
 
@@ -24,6 +25,8 @@ using namespace std;
 int main(int argc, char* argv[])
 {
     char* source_code_path = nullptr;
+    int target_arch = TARGET_ARCH_X64;
+
     string grammar_path = "../Grammar/grammar_test.txt";
     // process compile options
     for (int i = 1; i < argc; ++i) {
@@ -43,6 +46,19 @@ int main(int argc, char* argv[])
                     grammar_path = argv[i + 1];
                     ++i;
                     break;
+
+                case 'm':
+                    // set target arch
+                    if (argv[i][2] == '3' && argv[i][3] == '2') {
+                        target_arch = TARGET_ARCH_X86;
+                    }
+                    else if (argv[i][2] == '6' && argv[i][3] == '4') {
+                        target_arch = TARGET_ARCH_X64;
+                    }
+                    else {
+                        cerr << "Invalid Target Architecture" << endl;
+                        return -1;
+                    }
                 default:
                     cerr << "Invalid Compile Option" << endl;
                     return -1;
@@ -144,6 +160,12 @@ int main(int argc, char* argv[])
 #endif
 
     write_optimize_result();
+
+    // generate target code (x86 asm)
+    string target_string_str;
+//    generate_target_asm(target_string_str, target_arch);
+
+
     cout << "Acc!" << endl;
 
     // free memory
