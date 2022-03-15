@@ -214,8 +214,8 @@ void print_quaternion_sequence(vector<Quaternion> sequence)
     for (Function& function : Function::function_table) {
         cout << cnt << "\t" << function.name << "\t\t EntryAddr : " << function.entry_address << "\tReturnData: " << DATA_TYPE_TOKEN[function.return_data_type] << "\tArgs: ";
 
-        for (DATA_TYPE_ENUM& data_type : function.parameter_types) {
-            cout << DATA_TYPE_TOKEN[data_type] << '\t';
+        for (int parameter_index : function.parameter_index) {
+            cout << DATA_TYPE_TOKEN[symbol_table[parameter_index].data_type] << '\t';
         }
         cout << endl;
         ++cnt;
@@ -303,8 +303,8 @@ void write_semantic_result()
     for (Function& function : Function::function_table) {
         fout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.name << "EntryAddr : " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.entry_address << '\t' << "ReturnData: " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[function.return_data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "Args: ";
 
-        for (DATA_TYPE_ENUM& data_type : function.parameter_types) {
-            fout << DATA_TYPE_TOKEN[data_type] << '\t';
+        for (int parameter_index : function.parameter_index) {
+            fout << DATA_TYPE_TOKEN[symbol_table[parameter_index].data_type] << '\t';
         }
         fout << endl;
         ++cnt;
@@ -527,7 +527,7 @@ int DeclaredVar__id_post_action(int* return_values_ptr)
     return new_idx;
 }
 
-void build_array_index_vector(Node* variable_node, vector<int>& index_vector);
+void build_array_index_vector(Node* indices_node, vector<int>& index_vector);
 
 int DeclaredVar__id_Indices_post_action(int* return_values_ptr)
 {
@@ -545,7 +545,7 @@ int DeclaredVar__id_Indices_post_action(int* return_values_ptr)
     new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
     // build index vector
-    build_array_index_vector(Node::current_node, new_symbol.index_record);
+    build_array_index_vector(Node::current_node->child_nodes_ptr[1], new_symbol.index_record);
 
     // calc memory size
 //        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
@@ -675,7 +675,7 @@ int FunDeclaration__Type_FuncName_LeftBrace_HereIsParameter_RightBrace_LeftCurly
 ////    semantic_action_stack.push_back(1); // passing arg to Type, means it is function return type
 ////    Node::current_node->child_nodes_ptr[0]->attributes.emplace(boolTypeUsageAttr, boolTypeUsage_FuncReturn);
 //
-//    Function::function_table.back().parameter_types.clear();
+//    Function::function_table.back().parameter_index.clear();
 //    ++current_layer;
 //    return 0;
 //}
@@ -832,7 +832,7 @@ int Function__id_post_function(int* return_values_ptr)
 
 int HereIsParameter__void_post_function(int* return_values_ptr)
 {
-    Function::function_table.back().parameter_types.clear();
+    Function::function_table.back().parameter_index.clear();
     return 0;
 }
 
@@ -840,18 +840,18 @@ int HereIsParameter__Parameters_post_function(int* return_values_ptr)
 {
     int param = 0;
 
-    vector<DATA_TYPE_ENUM> reverse_param_type;
+    vector<int> reverse_param_index;
     for (int i = analyse_symbol_stack.size() - 1; i >= 0; --i) {
         if (analyse_symbol_stack[i].code_segment_layer != current_layer) {
             break;
         }
-        reverse_param_type.push_back(symbol_table[analyse_symbol_stack[i].symbol_index].data_type);
+        reverse_param_index.push_back(analyse_symbol_stack[i].symbol_index);
         ++param;
     }
 
-    assert(Function::function_table.back().parameter_types.empty());
-    for (int i = reverse_param_type.size() - 1; i >= 0; --i) {
-        Function::function_table.back().parameter_types.push_back(reverse_param_type[i]);
+    assert(Function::function_table.back().parameter_index.empty());
+    for (int i = reverse_param_index.size() - 1; i >= 0; --i) {
+        Function::function_table.back().parameter_index.push_back(reverse_param_index[i]);
     }
 
     return param;
@@ -914,7 +914,7 @@ int Parameter__Type_id_Indices_post_function(int* return_values_ptr)
     new_symbol.last_use_offset = new_symbol.node_ptr->offset;
 
     // build index vector
-    build_array_index_vector(Node::current_node, new_symbol.index_record);
+    build_array_index_vector(Node::current_node->child_nodes_ptr[2], new_symbol.index_record);
 
     // calc memory size
 //        unsigned int current_size = BASE_DATA_TYPE_SIZE[(int)current_data_type];
@@ -927,6 +927,8 @@ int Parameter__Type_id_Indices_post_function(int* return_values_ptr)
     new_symbol.memory_size = -1; // the size of array will be calculated in DAG optimization part
 
     symbol_table.push_back(new_symbol);
+
+    analyse_symbol_stack.push_back(StackEntry{int(symbol_table.size() - 1), current_layer});
 
     return symbol_table.size() - 1;
 }
@@ -978,9 +980,9 @@ int VariableUse__id_post_function(int* return_values_ptr)
 //    return 0;
 //}
 
-void build_array_index_vector(Node* variable_node, vector<int>& index_vector)
+void build_array_index_vector(Node* indices_node, vector<int>& index_vector)
 {
-    Node* current_index_node_pointer = variable_node->child_nodes_ptr[1];
+    Node* current_index_node_pointer = indices_node;
 
     while (true) {
         index_vector.push_back(current_index_node_pointer->get_attribute_value(intIndicesSizeIndexAttr));
@@ -1031,7 +1033,7 @@ int VariableUse__id_Indices_post_function(int* return_values_ptr)
 
             // check index valid & calc offset
             vector<int> indices_vector;
-            build_array_index_vector(Node::current_node, indices_vector);
+            build_array_index_vector(Node::current_node->child_nodes_ptr[1], indices_vector);
 
             if (indices_vector.size() != symbolEntry.index_record.size()) {
                 Diagnose::printError(Node::current_node->offset, "Invalid index/indices to fetch an element from array.");
@@ -1177,7 +1179,7 @@ int Call__id_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_value
     int func_idx = find_function(Node::current_node->child_nodes_ptr[0]);
     Function& current_function = Function::function_table[func_idx];
 //    cout << current_function.name << " provide args " << return_values_ptr[2] << endl;
-    if (return_values_ptr[2] != current_function.parameter_types.size()) {
+    if (return_values_ptr[2] != current_function.parameter_index.size()) {
         // todo throw error: NOT MATCH FUNCTION DECLARE
         Diagnose::printError(Node::current_node->offset, "Function arguments not matched.");
         exit(-1);
@@ -1186,24 +1188,38 @@ int Call__id_LeftBrace_HereIsArgument_RightBrace_post_function(int* return_value
     int offset = 0;
     for (int i = 0; i < return_values_ptr[2]; ++i) {
         Quaternion& current_quaternion = quaternion_sequence[quaternion_sequence.size() - 1 - i - offset];
-        if (current_quaternion.op_code != OP_PAR || symbol_table[current_quaternion.opr1].data_type != current_function.parameter_types[i]) {
-            // auto cast
-            OP_CODE cast_op = auto_cast_table[symbol_table[current_quaternion.opr1].data_type][current_function.parameter_types[i]];
-            if (cast_op == OP_INVALID) {
-                // todo throw error: NOT MATCH FUNCTION DECLARE
-                Diagnose::printError(Node::current_node->offset, "Function declaration not matched.");
+        if (current_quaternion.op_code == OP_PAR) {
+            if ((symbol_table[current_quaternion.opr1].is_array && !symbol_table[current_quaternion.opr1].is_temp) ^ symbol_table[current_function.parameter_index[i]].is_array) {
+                // process array
+                Diagnose::printError(Node::current_node->offset, "Cannot pass wrong type arguments (array or non-array) to a function.");
                 exit(-1);
             }
-            else if (symbol_table[current_quaternion.opr1].data_type > current_function.parameter_types[i]) {
-                Diagnose::printWarning(symbol_table[current_quaternion.opr1].last_use_offset, "Narrow conversion from " + DATA_TYPE_TOKEN[symbol_table[current_quaternion.opr1].data_type] + " to " + DATA_TYPE_TOKEN[current_function.parameter_types[i]] + '.');
-            }
+            else if (symbol_table[current_quaternion.opr1].data_type != symbol_table[current_function.parameter_index[i]].data_type) {
+                if (symbol_table[current_quaternion.opr1].is_array) {
+                    // process array
+                    Diagnose::printError(Node::current_node->offset, "Cannot cast data type between arrays.");
+                    exit(-1);
+                }
+                else {
+                    // auto cast
+                    OP_CODE cast_op = auto_cast_table[symbol_table[current_quaternion.opr1].data_type][symbol_table[current_function.parameter_index[i]].data_type];
+                    if (cast_op == OP_INVALID) {
+                        // todo throw error: NOT MATCH FUNCTION DECLARE
+                        Diagnose::printError(Node::current_node->offset, "Function declaration not matched.");
+                        exit(-1);
+                    }
+                    else if (symbol_table[current_quaternion.opr1].data_type > symbol_table[current_function.parameter_index[i]].data_type) {
+                        Diagnose::printWarning(symbol_table[current_quaternion.opr1].last_use_offset, "Narrow conversion from " + DATA_TYPE_TOKEN[symbol_table[current_quaternion.opr1].data_type] + " to " + DATA_TYPE_TOKEN[symbol_table[current_function.parameter_index[i]].data_type] + '.');
+                    }
 
-            // can be auto cast
-            int new_symbol_idx = get_temp_symbol(current_function.parameter_types[i], symbol_table[current_quaternion.opr1].is_const);
-            quaternion_sequence.insert(quaternion_sequence.end() - i - 1 - offset, Quaternion{cast_op, current_quaternion.opr1, -1, new_symbol_idx});
-            assert(quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].op_code == OP_PAR);
-            quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].opr1 = new_symbol_idx;
-            ++offset;
+                    // can be auto cast
+                    int new_symbol_idx = get_temp_symbol(symbol_table[current_function.parameter_index[i]].data_type, symbol_table[current_quaternion.opr1].is_const);
+                    quaternion_sequence.insert(quaternion_sequence.end() - i - 1 - offset, Quaternion{cast_op, current_quaternion.opr1, -1, new_symbol_idx});
+                    assert(quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].op_code == OP_PAR);
+                    quaternion_sequence[quaternion_sequence.size() - 1 - i - offset].opr1 = new_symbol_idx;
+                    ++offset;
+                }
+            }
         }
     }
 
@@ -1222,7 +1238,7 @@ int Call__id_LeftBrace_RightBrace_post_function(int* return_values_ptr)
     int func_idx = find_function(Node::current_node->child_nodes_ptr[0]);
     Function& current_function = Function::function_table[func_idx];
 
-    if (!Function::function_table[func_idx].parameter_types.empty()) {
+    if (!Function::function_table[func_idx].parameter_index.empty()) {
         Diagnose::printError(Node::current_node->offset, "Function " + Function::function_table[func_idx].name + " requires arguments.");
     }
 

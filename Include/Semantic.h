@@ -177,7 +177,7 @@ struct SymbolEntry {
 struct Function {
     string name;
     int entry_address;
-    vector<DATA_TYPE_ENUM> parameter_types;
+    vector<int> parameter_index;
     DATA_TYPE_ENUM return_data_type;
 
     static vector<Function> function_table;

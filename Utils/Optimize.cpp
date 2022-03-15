@@ -1744,7 +1744,13 @@ void set_array_size()
     for (SymbolEntry& symbol_entry : symbol_table) {
         if (symbol_entry.is_array && !symbol_entry.is_temp) {
             int size = 1;
-            Node* indices_node = symbol_entry.node_ptr->child_nodes_ptr[1];
+            Node* indices_node;
+            if (symbol_entry.node_ptr->content == "Parameter") {
+                indices_node = symbol_entry.node_ptr->child_nodes_ptr[2];
+            }
+            else {
+                indices_node = symbol_entry.node_ptr->child_nodes_ptr[1];
+            }
 
             while (indices_node->child_nodes_ptr.size() == 4) {
                 size *= symbol_table[indices_node->get_attribute_value(intIndicesSizeIndexAttr)].value.int_value;
@@ -1868,8 +1874,8 @@ void write_optimize_result()
     for (Function& function : Function::function_table) {
         fout << setiosflags(ios::left) << setw(6) << cnt << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.name << "EntryAddr : " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << function.entry_address << '\t' << "ReturnData: " << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << DATA_TYPE_TOKEN[function.return_data_type] << setiosflags(ios::left) << setw(DISPLAY_WIDTH) << "Args: ";
 
-        for (DATA_TYPE_ENUM& data_type : function.parameter_types) {
-            fout << DATA_TYPE_TOKEN[data_type] << '\t';
+        for (int parameter_index : function.parameter_index) {
+            fout << DATA_TYPE_TOKEN[symbol_table[parameter_index].data_type] << '\t';
         }
         fout << endl;
         ++cnt;
