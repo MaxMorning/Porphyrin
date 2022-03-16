@@ -163,8 +163,10 @@ int main(int argc, char* argv[])
 
     // generate target code (x86 asm)
     string target_string_str;
-//    generate_target_asm(target_string_str, target_arch);
+    generate_target_asm(target_string_str, target_arch);
 
+    ofstream fout("target.asm");
+    write_target_code(target_string_str, fout);
 
     cout << "Acc!" << endl;
 

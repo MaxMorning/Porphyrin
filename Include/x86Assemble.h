@@ -21,24 +21,33 @@
 
 using namespace std;
 
-enum X86GPR {
-    EAX,
-    EBX,
-    ECX,
-    EDX,
+//enum GPR32bit {
+//    EAX,
+//    EBX,
+//    ECX,
+//    EDX,
+//
+//    ESI,
+//    EDI,
+//
+//    R8D,
+//    R9D,
+//    R10D,
+//    R11D,
+//    R12D,
+//    R13D,
+//    R14D,
+//    R15D
+//};
 
-    ESI,
-    EDI
-};
+enum GPR64bit {
+    AX,
+    BX,
+    CX,
+    DX,
 
-enum X64GPR {
-    RAX,
-    RBX,
-    RCX,
-    RDX,
-
-    RSI,
-    RDI,
+    SI,
+    DI,
 
     R8,
     R9,
@@ -57,14 +66,28 @@ enum PointerRegister {
     IP
 };
 
-const string GPRStr[] = {
-        "AX",
-        "BX",
-        "CX",
-        "DX",
+#define GPR8bIDX    0
+#define GPR16bIDX   1
+#define GPR32bIDX   2
+#define GPR64bIDX   3
 
-        "SI",
-        "DI"
+const string GPRStr[][4] = {
+        {"al", "ax", "eax", "rax"},
+        {"bl", "bx", "ebx", "rbx"},
+        {"cl", "cx", "ecx", "rcx"},
+        {"dl", "dx", "edx", "rdx"},
+
+        {"sil", "si", "esi", "rsi"},
+        {"dil", "di", "edi", "rdi"},
+
+        {"r8l", "r8w", "r8d", "r8"},
+        {"r9l", "r9w", "r9d", "r9"},
+        {"r10l", "r10w", "r10d", "r10"},
+        {"r11l", "r11w", "r11d", "r11"},
+        {"r12l", "r12w", "r12d", "r12"},
+        {"r13l", "r13w", "r13d", "r13"},
+        {"r14l", "r14w", "r14d", "r14"},
+        {"r15l", "r15w", "r15d", "r15"}
 };
 
 const string PointerRegisterStr[] = {
@@ -81,6 +104,34 @@ enum SegmentRegister {
     CS,
     FS,
     GS
+};
+
+enum SSEReg {
+    XMM0,
+    XMM1,
+    XMM2,
+    XMM3,
+    XMM4,
+    XMM5,
+    XMM6,
+    XMM7
+};
+
+const string XMMRegStr[] = {
+        "xmm0",
+        "xmm1",
+        "xmm2",
+        "xmm3",
+        "xmm4",
+        "xmm5",
+        "xmm6",
+        "xmm7"
+};
+
+struct QuaternionActiveInfo {
+    int opr1_active_info;
+    int opr2_active_info;
+    int result_active_info;
 };
 
 void generate_target_asm(string& target_string_str, int target_arch);
