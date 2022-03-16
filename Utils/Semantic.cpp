@@ -429,21 +429,21 @@ OP_CODE Op_Type_Conversion(OP_CODE op_from, DATA_TYPE_ENUM num_type)
 int Source__Declarations_post_action(int* return_values_ptr)
 {
     // find main function
-    int main_entrance = -1;
-    for (Function& function : Function::function_table) {
-        if (function.name == "main") {
-            main_entrance = function.entry_address;
-            break;
-        }
-    }
-    if (main_entrance > -1) {
-        // have main
-        for (Function& function : Function::function_table) {
-            ++function.entry_address;
-        }
-    }
-
-    quaternion_sequence.insert(quaternion_sequence.begin(), Quaternion{OP_JMP, -1, -1, main_entrance + 1});
+//    int main_entrance = -1;
+//    for (Function& function : Function::function_table) {
+//        if (function.name == "main") {
+//            main_entrance = function.entry_address;
+//            break;
+//        }
+//    }
+//    if (main_entrance > -1) {
+//        // have main
+//        for (Function& function : Function::function_table) {
+//            ++function.entry_address;
+//        }
+//    }
+//
+//    quaternion_sequence.insert(quaternion_sequence.begin(), Quaternion{OP_JMP, -1, -1, main_entrance + 1});
 
     return 0;
 }

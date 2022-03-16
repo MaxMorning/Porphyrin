@@ -1630,10 +1630,11 @@ void unreachable_block_set_nop(vector<Quaternion>& target_sequence)
 void code_clean_up()
 {
     // prefix
-    int* nop_instr_cnt = new int[base_blocks.size()];
+    int* nop_instr_cnt = new int[base_blocks.size() + 1];
 
     int cnt = 0;
 
+    nop_instr_cnt[0] = 0;
     for (int i = 0; i < base_blocks.size(); ++i) {
         for (int idx = base_blocks[i].start_index; idx <= base_blocks[i].end_index; ++idx) {
             if (optimized_sequence[idx].op_code == OP_NOP) {
@@ -1641,11 +1642,11 @@ void code_clean_up()
             }
         }
 
-        nop_instr_cnt[i] = cnt;
+        nop_instr_cnt[i + 1] = cnt;
     }
 
 #ifdef OPTIMIZE_DEBUG
-    for (int i = 0; i < base_blocks.size(); ++i) {
+    for (int i = 0; i <= base_blocks.size(); ++i) {
         cout << nop_instr_cnt[i] << '\t';
     }
     cout << endl;
@@ -1665,7 +1666,7 @@ void code_clean_up()
         if (last_quaternion.op_code == OP_JMP || last_quaternion.op_code == OP_JNZ || last_quaternion.op_code == OP_JEQ) {
             // adjust jump target
             int dst_block_idx = search_base_block(base_block.end_index + last_quaternion.result);
-            last_quaternion.result -= nop_instr_cnt[dst_block_idx - 1] - nop_instr_cnt[block_idx];
+            last_quaternion.result -= nop_instr_cnt[dst_block_idx] - nop_instr_cnt[block_idx + 1];
 
             removed_sequence.push_back(last_quaternion);
         }
@@ -1676,16 +1677,16 @@ void code_clean_up()
         }
     }
 
-    delete[] nop_instr_cnt;
-
     optimized_sequence = removed_sequence;
 
     // update function entrance
     for (Function& function : Function::function_table) {
         int base_block_idx = search_base_block(function.entry_address);
-        assert(base_block_idx > 0);
-        function.entry_address -= nop_instr_cnt[base_block_idx - 1];
+        assert(base_block_idx >= 0);
+        function.entry_address -= nop_instr_cnt[base_block_idx];
     }
+
+    delete[] nop_instr_cnt;
 }
 
 void symbol_clean_up()
