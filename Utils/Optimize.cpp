@@ -11,7 +11,7 @@
 #include "Include/Optimize.h"
 
 #define IS_NOT_BRANCH_IR -5
-const unsigned int MAX_UNSIGNED_INT = 0xFFFFFFFF;
+const int MAX_INT = 2147483647;
 
 
 vector<Quaternion> optimized_sequence;
@@ -41,9 +41,9 @@ int is_branch_IR(const Quaternion& quaternion, int quaternion_index)
 
 vector<BaseBlock> base_blocks;
 
-unsigned int search_base_block(unsigned int entrance_index)
+int search_base_block(int entrance_index)
 {
-    for (unsigned int i = 0; i < base_blocks.size(); ++i) {
+    for (int i = 0; i < base_blocks.size(); ++i) {
         if (base_blocks[i].start_index == entrance_index) {
             return i;
         }
@@ -74,11 +74,11 @@ void split_base_blocks(vector<Quaternion> quaternion_sequence)
 
 
     // generate base block objects
-    base_blocks.push_back(BaseBlock{0, (int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
+    base_blocks.push_back(BaseBlock{0, (int)(quaternion_sequence.size() - 1), MAX_INT, MAX_INT, false});
     for (int index = 1; index < quaternion_sequence.size(); ++index) {
         if (is_base_block_entry_array[index]) {
             base_blocks.back().end_index = index - 1;
-            base_blocks.push_back(BaseBlock{(int)index, (int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
+            base_blocks.push_back(BaseBlock{(int)index, (int)(quaternion_sequence.size() - 1), MAX_INT, MAX_INT, false});
         }
     }
 
@@ -110,10 +110,10 @@ void split_base_blocks(vector<Quaternion> quaternion_sequence)
 
     for (int i = 0; i < base_blocks.size(); ++i) {
         if (base_blocks[i].is_reachable) {
-            if (base_blocks[i].next_block_0_ptr != MAX_UNSIGNED_INT) {
+            if (base_blocks[i].next_block_0_ptr != MAX_INT) {
                 base_blocks[base_blocks[i].next_block_0_ptr].is_reachable = true;
             }
-            if (base_blocks[i].next_block_1_ptr != MAX_UNSIGNED_INT) {
+            if (base_blocks[i].next_block_1_ptr != MAX_INT) {
                 base_blocks[base_blocks[i].next_block_1_ptr].is_reachable = true;
             }
         }
@@ -142,8 +142,8 @@ int create_dag_node(int symbol_index, OP_CODE op, bool force_const = false)
     new_dag_node->represent_variables.emplace(symbol_index);
     new_dag_node->is_const = force_const || symbol_table[symbol_index].is_const;
     new_dag_node->const_value = symbol_table[symbol_index].value;
-    new_dag_node->opr1_ptr = MAX_UNSIGNED_INT;
-    new_dag_node->opr2_ptr = MAX_UNSIGNED_INT;
+    new_dag_node->opr1_ptr = MAX_INT;
+    new_dag_node->opr2_ptr = MAX_INT;
     new_dag_node->is_visited = false;
     new_dag_node->symbol_index = symbol_index;
 
@@ -151,7 +151,7 @@ int create_dag_node(int symbol_index, OP_CODE op, bool force_const = false)
     return dag_node_index;
 }
 
-int search_matched_node(OP_CODE op, unsigned int opr1_node_index, unsigned int opr2_node_index, bool can_swap)
+int search_matched_node(OP_CODE op, int opr1_node_index, int opr2_node_index, bool can_swap)
 {
     for (int i = 0; i < dag_nodes.size(); ++i) {
         if (dag_nodes[i]->op == op) {
@@ -356,8 +356,8 @@ void calculate_use_def_sets()
 
     for (BaseBlock& base_block : base_blocks) {
         memset(symbol_status, 0, symbol_table.size() * 2 * sizeof(bool));
-        unordered_set<unsigned int> temp_use_set;
-        unordered_set<unsigned int> temp_def_set;
+        unordered_set<int> temp_use_set;
+        unordered_set<int> temp_def_set;
         for (int quat_index = base_block.start_index; quat_index <= base_block.end_index; ++quat_index) {
             Quaternion& quaternion = quaternion_sequence[quat_index];
 
@@ -486,14 +486,14 @@ void calculate_use_def_sets()
         }
 
         // remove const var
-        for (unsigned int symbol_index : temp_use_set) {
+        for (int symbol_index : temp_use_set) {
             if (!symbol_table[symbol_index].is_const && !(symbol_table[symbol_index].is_array && !symbol_table[symbol_index].is_temp)) {
                 base_block.use_set.emplace(symbol_index);
             }
         }
 
 
-        for (unsigned int symbol_index : temp_def_set) {
+        for (int symbol_index : temp_def_set) {
             if (!symbol_table[symbol_index].is_const && !(symbol_table[symbol_index].is_array && !symbol_table[symbol_index].is_temp)) {
                 base_block.def_set.emplace(symbol_index);
             }
@@ -509,7 +509,7 @@ void calculate_active_symbol_sets(bool need_process_call_par)
     // referenced from ISBN 978-7-302-38141-9  P263
     for (BaseBlock& baseBlock : base_blocks) {
         baseBlock.out_set.clear();
-        baseBlock.in_set = unordered_set<unsigned int>(baseBlock.use_set);
+        baseBlock.in_set = unordered_set<int>(baseBlock.use_set);
     }
 
     bool change = true;
@@ -518,8 +518,8 @@ void calculate_active_symbol_sets(bool need_process_call_par)
 
         for (BaseBlock& baseBlock : base_blocks) {
             bool single_change = false;
-            if (baseBlock.next_block_0_ptr != MAX_UNSIGNED_INT) {
-                for (unsigned int symbol_index : base_blocks[baseBlock.next_block_0_ptr].in_set) {
+            if (baseBlock.next_block_0_ptr != MAX_INT) {
+                for (int symbol_index : base_blocks[baseBlock.next_block_0_ptr].in_set) {
                     auto find_iter = baseBlock.out_set.find(symbol_index);
                     if (find_iter == baseBlock.out_set.end()) {
                         // not exist
@@ -529,8 +529,8 @@ void calculate_active_symbol_sets(bool need_process_call_par)
                 }
             }
 
-            if (baseBlock.next_block_1_ptr != MAX_UNSIGNED_INT) {
-                for (unsigned int symbol_index : base_blocks[baseBlock.next_block_1_ptr].in_set) {
+            if (baseBlock.next_block_1_ptr != MAX_INT) {
+                for (int symbol_index : base_blocks[baseBlock.next_block_1_ptr].in_set) {
                     auto find_iter = baseBlock.out_set.find(symbol_index);
                     if (find_iter == baseBlock.out_set.end()) {
                         // not exist
@@ -543,7 +543,7 @@ void calculate_active_symbol_sets(bool need_process_call_par)
             if (single_change) {
                 change = true;
 
-                for (unsigned int symbol_index : baseBlock.out_set) {
+                for (int symbol_index : baseBlock.out_set) {
                     auto find_iter = baseBlock.def_set.find(symbol_index);
                     if (find_iter == baseBlock.def_set.end()) {
                         // not in def set
@@ -579,25 +579,25 @@ void calculate_active_symbol_sets(bool need_process_call_par)
         cout << i << endl;
 
         cout << "Use\t";
-        for (unsigned int symbol_index : base_blocks[i].use_set) {
+        for (int symbol_index : base_blocks[i].use_set) {
             cout << symbol_table[symbol_index].content << '\t';
         }
         cout << endl;
 
         cout << "Def\t";
-        for (unsigned int symbol_index : base_blocks[i].def_set) {
+        for (int symbol_index : base_blocks[i].def_set) {
             cout << symbol_table[symbol_index].content << '\t';
         }
         cout << endl;
 
         cout << "In\t";
-        for (unsigned int symbol_index : base_blocks[i].in_set) {
+        for (int symbol_index : base_blocks[i].in_set) {
             cout << symbol_table[symbol_index].content << '\t';
         }
         cout << endl;
 
         cout << "Out\t";
-        for (unsigned int symbol_index : base_blocks[i].out_set) {
+        for (int symbol_index : base_blocks[i].out_set) {
             cout << symbol_table[symbol_index].content << '\t';
         }
         cout << endl;
@@ -627,11 +627,11 @@ int generate_quaternions(DAGNode& dag_node, vector<Quaternion>& target_sequence)
     }
 
     int opr1_index, opr2_index;
-    if (dag_node.opr1_ptr != MAX_UNSIGNED_INT) {
+    if (dag_node.opr1_ptr != MAX_INT) {
         opr1_index = generate_quaternions(*dag_nodes[dag_node.opr1_ptr], target_sequence);
     }
 
-    if (dag_node.opr2_ptr != MAX_UNSIGNED_INT) {
+    if (dag_node.opr2_ptr != MAX_INT) {
         opr2_index = generate_quaternions(*dag_nodes[dag_node.opr2_ptr], target_sequence);
     }
 
@@ -644,10 +644,10 @@ int generate_quaternions(DAGNode& dag_node, vector<Quaternion>& target_sequence)
         return dag_node.symbol_index;
     }
     else {
-//        dag_node.symbol_index = get_temp_symbol(get_result_data_type(dag_node.op, (dag_node.opr1_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID),
-//                                                                     (dag_node.opr2_ptr != MAX_UNSIGNED_INT ? symbol_table[opr1_index].data_type : DT_VOID) ), false);
-        target_sequence.push_back({dag_node.op, (dag_node.opr1_ptr != MAX_UNSIGNED_INT ? opr1_index : -1),
-                                   (dag_node.opr2_ptr != MAX_UNSIGNED_INT ? opr2_index : -1), dag_node.symbol_index});
+//        dag_node.symbol_index = get_temp_symbol(get_result_data_type(dag_node.op, (dag_node.opr1_ptr != MAX_INT ? symbol_table[opr1_index].data_type : DT_VOID),
+//                                                                     (dag_node.opr2_ptr != MAX_INT ? symbol_table[opr1_index].data_type : DT_VOID) ), false);
+        target_sequence.push_back({dag_node.op, (dag_node.opr1_ptr != MAX_INT ? opr1_index : -1),
+                                   (dag_node.opr2_ptr != MAX_INT ? opr2_index : -1), dag_node.symbol_index});
 
         return dag_node.symbol_index;
     }
@@ -679,7 +679,7 @@ void optimize_base_block(BaseBlock& base_block)
     }
 
     variable_dag_node_map = new int[symbol_table.size()];
-    memset(variable_dag_node_map, -1, symbol_table.size() * sizeof(unsigned int));
+    memset(variable_dag_node_map, -1, symbol_table.size() * sizeof(int));
 
     for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
         Quaternion& quaternion = quaternion_sequence[i];
@@ -917,12 +917,12 @@ void optimize_base_block(BaseBlock& base_block)
 
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -992,12 +992,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1030,12 +1030,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1068,12 +1068,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.bool_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1106,12 +1106,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1145,12 +1145,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1183,12 +1183,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.int_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1221,12 +1221,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1259,12 +1259,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1297,12 +1297,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.double_value = (double)dag_nodes[opr1_node_index]->const_value.float_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1335,12 +1335,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.bool_value = (bool)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1373,12 +1373,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.int_value = (int)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1411,12 +1411,12 @@ void optimize_base_block(BaseBlock& base_block)
                     dag_nodes[result_node_index]->const_value.float_value = (float)dag_nodes[opr1_node_index]->const_value.double_value;
                 }
                 else {
-                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_UNSIGNED_INT, false);
+                    int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, MAX_INT, false);
                     if (search_common_expr_index == -1) {
                         // no such common expr
                         int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
                         dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                        dag_nodes[result_node_index]->opr2_ptr = MAX_UNSIGNED_INT;
+                        dag_nodes[result_node_index]->opr2_ptr = MAX_INT;
                     }
                     else {
                         // find common expr
@@ -1478,7 +1478,7 @@ void optimize_base_block(BaseBlock& base_block)
 
 
     // set the symbol_index of all dag node which represents out active symbol as out active symbol index respectively
-    for (unsigned int out_active_symbol : base_block.out_set) {
+    for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1) {
             dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index = out_active_symbol;
         }
@@ -1500,14 +1500,14 @@ void optimize_base_block(BaseBlock& base_block)
 #endif
 
     // generate quaternion sequence
-    for (unsigned int out_active_symbol : base_block.out_set) {
+    for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1) {
             // check if this variable is const and generate assign instr
             if (dag_nodes[variable_dag_node_map[out_active_symbol]]->op == OP_INVALID) {
                 // get a const value == this variable
                 int value_temp_var = -1;
 
-                for (unsigned int symbol_index : dag_nodes[variable_dag_node_map[out_active_symbol]]->represent_variables) {
+                for (int symbol_index : dag_nodes[variable_dag_node_map[out_active_symbol]]->represent_variables) {
                     if (symbol_table[symbol_index].is_const || (base_block.in_set.find(symbol_index) != base_block.in_set.end())) {
                         value_temp_var = symbol_index;
                         break;
@@ -1523,7 +1523,7 @@ void optimize_base_block(BaseBlock& base_block)
     }
 
     // process 2 out active var use one DAG node
-    for (unsigned int out_active_symbol : base_block.out_set) {
+    for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1 && dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index != out_active_symbol) {
             base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index,
                                                             -1, (int)out_active_symbol});

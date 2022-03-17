@@ -23,17 +23,17 @@ struct BaseBlock {
     int start_index;
     int end_index;
 
-    unsigned int next_block_0_ptr;
-    unsigned int next_block_1_ptr;
+    int next_block_0_ptr;
+    int next_block_1_ptr;
 
     bool is_reachable;
 
     // active symbol calc
-    unordered_set<unsigned int> use_set;
-    unordered_set<unsigned int> def_set;
-    unordered_set<unsigned int> in_set;
+    unordered_set<int> use_set;
+    unordered_set<int> def_set;
+    unordered_set<int> in_set;
 
-    unordered_set<unsigned int> out_set;
+    unordered_set<int> out_set;
 
     vector<Quaternion> block_quaternion_sequence;
 };
@@ -41,13 +41,13 @@ struct BaseBlock {
 
 struct DAGNode {
     OP_CODE op;
-    unordered_set<unsigned int> represent_variables;
+    unordered_set<int> represent_variables;
 
     bool is_const;
     ValueType const_value; // for OP_ARRAY_STORE, int_value means the index of array
 
-    unsigned int opr1_ptr;
-    unsigned int opr2_ptr;
+    int opr1_ptr;
+    int opr2_ptr;
 
     bool is_visited;
     int symbol_index;

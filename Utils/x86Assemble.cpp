@@ -29,15 +29,16 @@ void init_symbol_table_offset(int target_arch) {
     // process function parameter offset
     int address_length = target_arch == TARGET_ARCH_X64 ? 8 : 4;
     for (Function &function: Function::function_table) {
-        int current_offset = address_length;
+        int current_offset = address_length * 2;
         for (int param_idx: function.parameter_index) {
             symbol_table[param_idx].memory_offset = current_offset;
-            if (symbol_table[param_idx].is_array) {
-                current_offset += address_length;
-            } else {
-                assert(symbol_table[param_idx].data_type != DT_VOID);
-                current_offset += BASE_DATA_TYPE_SIZE[symbol_table[param_idx].data_type];
-            }
+            current_offset += address_length;
+//            if (symbol_table[param_idx].is_array) {
+//                current_offset += address_length;
+//            } else {
+//                assert(symbol_table[param_idx].data_type != DT_VOID);
+//                current_offset += BASE_DATA_TYPE_SIZE[symbol_table[param_idx].data_type];
+//            }
         }
     }
 }
@@ -55,7 +56,7 @@ void generate_active_info_table(BaseBlock &base_block) {
     memset(symbol_status, -1, symbol_table.size() * sizeof(int));
 
     // set out active symbols
-    for (unsigned int out_symbol_idx: base_block.out_set) {
+    for (int out_symbol_idx: base_block.out_set) {
         symbol_status[out_symbol_idx] = ACTIVE_AT_EXIT;
     }
 
@@ -101,7 +102,7 @@ void generate_active_info_table(BaseBlock &base_block) {
     delete[] symbol_status;
 }
 
-vector<unsigned int> function_entrance_points;
+vector<int> function_entrance_points;
 vector<int> function_leave_correction_points;
 vector<int> leave_correction_function_idx;
 
@@ -682,7 +683,7 @@ string get_symbol_store_text(int symbol_index, int target_arch)
     }
 }
 
-void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, int target_arch) {
+void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, int target_arch, BaseBlock& base_block) {
     Quaternion &current_quaternion = optimized_sequence[quaternion_idx];
     update_next_use_table(quaternion_idx);
 
@@ -1069,8 +1070,28 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_CALL: {
+            // use ax to pass return value, so here need to store out active variables which use ax
+            for (int symbol_use_ax : gpr_variable_map[0]) {
+                if (base_block.out_set.find(symbol_use_ax) != base_block.out_set.end()) {
+                    generate_store(0, symbol_use_ax, target_text, target_arch);
+                }
+            }
+
             target_text.push_back("call\t_" + Function::function_table[current_quaternion.opr1].name);
             last_call_return_symbol = current_quaternion.result;
+
+            // pop all parameter
+            int target_arch_addr_length = target_arch == TARGET_ARCH_X64 ? 8 : 4;
+            int para_size = target_arch_addr_length * Function::function_table[current_quaternion.opr1].parameter_index.size();
+
+
+            if (target_arch == TARGET_ARCH_X64) {
+                target_text.push_back("addq\t$" + to_string(para_size) + ", %rsp");
+            }
+            else {
+                target_text.push_back("addl\t$" + to_string(para_size) + ", %esp");
+            }
+
             break;
         }
         case OP_BOOL_TO_CHAR:
@@ -1181,14 +1202,17 @@ void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text
     gen_entry_code(base_block, target_text, target_arch);
 
     for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
-        generate_quaternion_text(i, target_text, target_arch);
+        generate_quaternion_text(i, target_text, target_arch, base_block);
     }
 
     // generate out store instr
-    for (int out_sym : base_block.out_set) {
-        if (variable_reg_map[out_sym] != -1) {
-            // stores in reg, need write back
-            generate_store(variable_reg_map[out_sym], out_sym, target_text, target_arch);
+    // if last ir is call, ax value already stored.
+    if (optimized_sequence[base_block.end_index].op_code != OP_CALL) {
+        for (int out_sym : base_block.out_set) {
+            if (variable_reg_map[out_sym] != -1) {
+                // stores in reg, need write back
+                generate_store(variable_reg_map[out_sym], out_sym, target_text, target_arch);
+            }
         }
     }
 

@@ -155,7 +155,7 @@ struct SymbolEntry {
     bool is_const;
     DATA_TYPE_ENUM data_type;
     bool is_array;
-    unsigned int memory_size;
+    int memory_size;
     int function_index; // -1 means global symbols
     bool is_initial;
     bool is_used;
