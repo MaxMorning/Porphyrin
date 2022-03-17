@@ -155,6 +155,7 @@ int main(int argc, char* argv[])
     // optimize
     optimize_IR(quaternion_sequence);
 
+
 #ifdef OPTIMIZE_DEBUG
     print_optimize_sequence();
 #endif

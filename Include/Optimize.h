@@ -20,8 +20,8 @@ using namespace std;
 
 
 struct BaseBlock {
-    unsigned int start_index;
-    unsigned int end_index;
+    int start_index;
+    int end_index;
 
     unsigned int next_block_0_ptr;
     unsigned int next_block_1_ptr;
@@ -56,10 +56,10 @@ struct DAGNode {
 extern vector<BaseBlock> base_blocks;
 
 void split_base_blocks(vector<Quaternion> quaternion_sequence);
-void calculate_active_symbol_sets();
+void calculate_active_symbol_sets(bool need_process_call_par);
 
 extern vector<Quaternion> optimized_sequence;
-void optimize_IR(vector<Quaternion> quaternion_sequence);
+void optimize_IR(vector<Quaternion>& quaternion_sequence);
 
 
 void print_optimize_sequence();

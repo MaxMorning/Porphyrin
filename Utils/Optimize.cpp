@@ -74,11 +74,11 @@ void split_base_blocks(vector<Quaternion> quaternion_sequence)
 
 
     // generate base block objects
-    base_blocks.push_back(BaseBlock{0, (unsigned int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
+    base_blocks.push_back(BaseBlock{0, (int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
     for (int index = 1; index < quaternion_sequence.size(); ++index) {
         if (is_base_block_entry_array[index]) {
             base_blocks.back().end_index = index - 1;
-            base_blocks.push_back(BaseBlock{(unsigned int)index, (unsigned int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
+            base_blocks.push_back(BaseBlock{(int)index, (int)(quaternion_sequence.size() - 1), MAX_UNSIGNED_INT, MAX_UNSIGNED_INT, false});
         }
     }
 
@@ -91,8 +91,7 @@ void split_base_blocks(vector<Quaternion> quaternion_sequence)
         if (dst_quaternion_index >= 0) {
             base_blocks[i].next_block_0_ptr = search_base_block(dst_quaternion_index);
 
-            if (quaternion_sequence[base_blocks[i].end_index].op_code != OP_JMP
-            && quaternion_sequence[base_blocks[i].end_index].op_code != OP_CALL) {
+            if (quaternion_sequence[base_blocks[i].end_index].op_code != OP_JMP) {
                 base_blocks[i].next_block_1_ptr = i + 1;
             }
         }
@@ -502,7 +501,7 @@ void calculate_use_def_sets()
     }
 }
 
-void calculate_active_symbol_sets()
+void calculate_active_symbol_sets(bool need_process_call_par)
 {
     calculate_use_def_sets();
 
@@ -555,18 +554,20 @@ void calculate_active_symbol_sets()
         }
     }
 
-    // process return value
-    for (BaseBlock& baseBlock : base_blocks) {
-        if (quaternion_sequence[baseBlock.end_index].op_code == OP_RETURN && quaternion_sequence[baseBlock.end_index].result != -1) {
-            baseBlock.out_set.emplace(quaternion_sequence[baseBlock.end_index].result);
+    if (need_process_call_par) {
+        // process return value
+        for (BaseBlock& baseBlock : base_blocks) {
+            if (quaternion_sequence[baseBlock.end_index].op_code == OP_RETURN && quaternion_sequence[baseBlock.end_index].result != -1) {
+                baseBlock.out_set.emplace(quaternion_sequence[baseBlock.end_index].result);
+            }
         }
-    }
 
-    // process PAR
-    for (BaseBlock& baseBlock : base_blocks) {
-        for (int i = baseBlock.start_index; i <= baseBlock.end_index; ++i) {
-            if (quaternion_sequence[i].op_code == OP_PAR) {
-                baseBlock.out_set.emplace(quaternion_sequence[i].opr1);
+        // process PAR
+        for (BaseBlock& baseBlock : base_blocks) {
+            for (int i = baseBlock.start_index; i <= baseBlock.end_index; ++i) {
+                if (quaternion_sequence[i].op_code == OP_PAR) {
+                    baseBlock.out_set.emplace(quaternion_sequence[i].opr1);
+                }
             }
         }
     }
@@ -1763,11 +1764,11 @@ void set_array_size()
     }
 }
 
-void optimize_IR(vector<Quaternion> quaternion_sequence)
+void optimize_IR(vector<Quaternion>& quaternion_sequence)
 {
     split_base_blocks(quaternion_sequence);
 
-    calculate_active_symbol_sets();
+    calculate_active_symbol_sets(true);
 
     for (BaseBlock& baseBlock : base_blocks) {
         optimize_base_block(baseBlock);
@@ -1788,6 +1789,10 @@ void optimize_IR(vector<Quaternion> quaternion_sequence)
 
     code_clean_up();
     symbol_clean_up();
+
+    quaternion_sequence.clear();
+    quaternion_sequence.assign(optimized_sequence.begin(), optimized_sequence.end());
+//    quaternion_sequence = optimized_sequence;
 }
 
 void print_optimize_sequence()
