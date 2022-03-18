@@ -124,9 +124,14 @@ unordered_set<int> xmm_variable_map[8]; // the size of xmm regs
 int *variable_reg_map;
 int *variable_next_use;
 
+bool inline opr_is_stored_in_xmm(SymbolEntry& symbol)
+{
+    return (!(symbol.is_array && !symbol.is_temp) && (symbol.data_type == DT_FLOAT || symbol.data_type == DT_DOUBLE));
+}
+
 bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int target_arch) {
     if (last_call_return_symbol != -1) {
-        if (symbol_table[last_call_return_symbol].data_type == DT_FLOAT || symbol_table[last_call_return_symbol].data_type == DT_DOUBLE) {
+        if (opr_is_stored_in_xmm(symbol_table[last_call_return_symbol])) {
             xmm_variable_map[0].insert(last_call_return_symbol);
         }
         else {
@@ -210,8 +215,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
     QuaternionActiveInfo &current_active_info = quaternion_active_info_table[quaternion_idx];
 
     int opr1_reg = variable_reg_map[current_quaternion.opr1];
-    bool opr1_is_float_double = symbol_table[current_quaternion.opr1].data_type == DT_FLOAT ||
-                                symbol_table[current_quaternion.opr1].data_type == DT_DOUBLE;
+    bool opr1_is_float_double = opr_is_stored_in_xmm(symbol_table[current_quaternion.opr1]);
     if (opr1_reg != -1) {
         // some reg keeps opr1
         if (opr1_is_float_double) {
@@ -519,8 +523,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
 }
 
 int alloc_one_free_reg(int quaternion_idx, int symbol_idx, vector<string> &target_text, int target_arch) {
-    bool opr1_is_float_double =
-            symbol_table[symbol_idx].data_type == DT_FLOAT || symbol_table[symbol_idx].data_type == DT_DOUBLE;
+    bool opr1_is_float_double = opr_is_stored_in_xmm(symbol_table[symbol_idx]);
 
     // find free reg
     if (opr1_is_float_double) {
@@ -887,8 +890,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     }
                 } else {
                     variable_reg_map[current_quaternion.result] = alloc_reg_index;
-                    if (symbol_table[current_quaternion.result].data_type == DT_FLOAT ||
-                        symbol_table[current_quaternion.result].data_type == DT_DOUBLE) {
+                    if (opr_is_stored_in_xmm(symbol_table[current_quaternion.result])) {
                         xmm_variable_map[alloc_reg_index].insert(current_quaternion.result);
                     } else {
                         gpr_variable_map[alloc_reg_index].insert(current_quaternion.result);
@@ -1376,7 +1378,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
             else {
                 if (variable_reg_map[current_quaternion.opr1] != -1) {
                     // store in reg
-                    if (symbol_table[current_quaternion.opr1].data_type == DT_FLOAT || symbol_table[current_quaternion.opr1].data_type == DT_DOUBLE) {
+                    if (opr_is_stored_in_xmm(symbol_table[current_quaternion.opr1])) {
                         target_text.push_back("pushq\t%" + XMMRegStr[variable_reg_map[current_quaternion.opr1]]);
                     }
                     else {
