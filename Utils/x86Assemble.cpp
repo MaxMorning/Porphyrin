@@ -21,6 +21,13 @@
 #define SCORE_NEXT_USE_RATE 2
 #define SCORE_VAR_IN_MEM_RATE 4
 
+
+// architecture related variables
+string ip_str;
+string bp_str;
+int max_gpr_cnt;
+int max_xmm_cnt;
+
 void init_symbol_table_offset(int target_arch) {
     for (SymbolEntry &symbol: symbol_table) {
         symbol.memory_offset = INVALID_MEMORY_OFFSET;
@@ -178,31 +185,29 @@ void generate_store(int reg_idx, int store_var_idx, vector<string> &target_text,
         current_stack_top_addr = target_mem_offset;
     }
 
-    string bp_base_str = target_arch == TARGET_ARCH_X64 ? "(%rbp)" : "(%ebp)";
-
     switch (symbol_table[store_var_idx].data_type) {
         case DT_BOOL:
             target_text.push_back(
                     "movb\t%" + GPRStr[reg_idx][0] + ", " + to_string(symbol_table[store_var_idx].memory_offset) +
-                    bp_base_str);
+                    bp_str);
             break;
 
         case DT_INT:
             target_text.push_back(
                     "movl\t%" + GPRStr[reg_idx][2] + ", " + to_string(symbol_table[store_var_idx].memory_offset) +
-                    bp_base_str);
+                    bp_str);
             break;
 
         case DT_FLOAT:
             target_text.push_back(
                     "movss\t%" + XMMRegStr[reg_idx] + ", " + to_string(symbol_table[store_var_idx].memory_offset) +
-                    bp_base_str);
+                    bp_str);
             break;
 
         case DT_DOUBLE:
             target_text.push_back(
                     "movsd\t%" + XMMRegStr[reg_idx] + ", " + to_string(symbol_table[store_var_idx].memory_offset) +
-                    bp_base_str);
+                    bp_str);
             break;
 
         default:
@@ -228,7 +233,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
                 }
             } else {
                 // try to find free xmm reg
-                for (int i = 0; i < 8; ++i) {
+                for (int i = 0; i < max_xmm_cnt; ++i) {
                     if (xmm_variable_map[i].empty()) {
                         xmm_variable_map[opr1_reg].erase(current_quaternion.opr1);
                         xmm_variable_map[i].insert(current_quaternion.opr1);
@@ -247,7 +252,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
                 int max_score = -3;
                 int chosen_reg_idx = -1;
 
-                for (int i = 0; i < 8; ++i) {
+                for (int i = 0; i < max_xmm_cnt; ++i) {
                     // check min usage position
                     int min_next_use = 2147483647;
                     // find var in memory
@@ -305,7 +310,6 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
                 }
             } else {
                 // try to find free gpr
-                int max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
                 for (int i = 0; i < max_gpr_cnt; ++i) {
                     if (gpr_variable_map[i].empty()) {
                         gpr_variable_map[opr1_reg].erase(current_quaternion.opr1);
@@ -378,7 +382,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
     // find free reg
     if (opr1_is_float_double) {
         // find free xmm reg
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < max_xmm_cnt; ++i) {
             if (xmm_variable_map[i].empty()) {
                 assert(symbol_table[current_quaternion.opr1].memory_offset != INVALID_MEMORY_OFFSET);
 
@@ -398,7 +402,6 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
         }
     } else {
         // find free gpr
-        int max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
         for (int i = 0; i < max_gpr_cnt; ++i) {
             if (gpr_variable_map[i].empty()) {
                 assert(symbol_table[current_quaternion.opr1].memory_offset != INVALID_MEMORY_OFFSET);
@@ -424,7 +427,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
     int max_score = -3;
     int chosen_reg_idx = -1;
     if (opr1_is_float_double) {
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < max_xmm_cnt; ++i) {
             // check min usage position
             int min_next_use = 2147483647;
             // find var in memory
@@ -471,7 +474,6 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
         xmm_variable_map[chosen_reg_idx].insert(current_quaternion.opr1);
         return chosen_reg_idx;
     } else {
-        int max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
         for (int i = 0; i < max_gpr_cnt; ++i) {
             // check min usage position
             int min_next_use = 2147483647;
@@ -528,7 +530,7 @@ int alloc_one_free_reg(int quaternion_idx, int symbol_idx, vector<string> &targe
     // find free reg
     if (opr1_is_float_double) {
         // find free xmm reg
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < max_xmm_cnt; ++i) {
             if (xmm_variable_map[i].empty()) {
                 xmm_variable_map[i].insert(symbol_idx);
                 variable_reg_map[symbol_idx] = i;
@@ -538,7 +540,6 @@ int alloc_one_free_reg(int quaternion_idx, int symbol_idx, vector<string> &targe
         }
     } else {
         // find free gpr
-        int max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
         for (int i = 0; i < max_gpr_cnt; ++i) {
             if (gpr_variable_map[i].empty()) {
                 gpr_variable_map[i].insert(symbol_idx);
@@ -553,7 +554,7 @@ int alloc_one_free_reg(int quaternion_idx, int symbol_idx, vector<string> &targe
     int max_score = -3;
     int chosen_reg_idx = -1;
     if (opr1_is_float_double) {
-        for (int i = 0; i < 8; ++i) {
+        for (int i = 0; i < max_xmm_cnt; ++i) {
             // check min usage position
             int min_next_use = 2147483647;
             // find var in memory
@@ -590,7 +591,6 @@ int alloc_one_free_reg(int quaternion_idx, int symbol_idx, vector<string> &targe
         xmm_variable_map[chosen_reg_idx].insert(symbol_idx);
         return chosen_reg_idx;
     } else {
-        int max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
         for (int i = 0; i < max_gpr_cnt; ++i) {
             // check min usage position
             int min_next_use = 2147483647;
@@ -696,8 +696,6 @@ void remove_opr1_set_result(int opr1_idx, int opr1_reg_idx, int result_idx, unor
 
 string get_symbol_store_text(int symbol_index, int target_arch)
 {
-    string ip_str = target_arch == TARGET_ARCH_X64 ? "(%rip)" : "(%eip)";
-    string bp_str = target_arch == TARGET_ARCH_X64 ? "(%rbp)" : "(%ebp)";
     if (symbol_table[symbol_index].function_index == -1) {
         // is global var
         return ".GL_" + symbol_table[symbol_index].content + ip_str;
@@ -763,7 +761,6 @@ int cmp_int_code(int quaternion_idx, vector<string>& target_text, int target_arc
 int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_arch)
 {
     // todo not implemented
-    string ip_str = target_arch == TARGET_ARCH_X64 ? "(%rip)" : "(%eip)";
 
     Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
     int result_reg = alloc_one_free_reg(quaternion_idx, current_quaternion.result, target_text, target_arch);
@@ -795,9 +792,6 @@ int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_a
 void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, int target_arch, BaseBlock& base_block) {
     Quaternion &current_quaternion = optimized_sequence[quaternion_idx];
     update_next_use_table(quaternion_idx);
-
-    string sp_str = (target_arch == TARGET_ARCH_X64 ? "(%rsp), %" : "(%esp), %");
-    string ip_str = (target_arch == TARGET_ARCH_X64 ? "(%rip), %" : "(%eip), %");
 
     if (OP_CODE_OPR_USAGE[current_quaternion.op_code][2] == USAGE_VAR) {
         last_calc_symbol = current_quaternion.result;
@@ -837,7 +831,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                         } else {
                             target_text.push_back(
                                     "movss\t.RO_" + to_string(symbol_table[current_quaternion.opr1].value.float_value) +
-                                    (target_arch == TARGET_ARCH_X64 ? "(%rip), %" : "(%eip), %") +
+                                    ip_str + ", %" +
                                     XMMRegStr[alloc_reg_index]);
                         }
                         break;
@@ -849,7 +843,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                         } else {
                             target_text.push_back("movsd\t.RO_" +
                                                   to_string(symbol_table[current_quaternion.opr1].value.double_value) +
-                                                  (target_arch == TARGET_ARCH_X64 ? "(%rip), %" : "(%eip), %") +
+                                                          ip_str + ", %" +
                                                   XMMRegStr[alloc_reg_index]);
                         }
                         break;
@@ -1674,6 +1668,11 @@ void generate_global_info(vector<string> &target_global_info)
 }
 
 void generate_target_asm(string &target_string_str, int target_arch) {
+    ip_str = target_arch == TARGET_ARCH_X64 ? "(%rip)" : "(%eip)";
+    bp_str = target_arch == TARGET_ARCH_X64 ? "(%rbp)" : "(%ebp)";
+    max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
+    max_xmm_cnt = target_arch == TARGET_ARCH_X64 ? 16 : 8;
+
     init_symbol_table_offset(target_arch);
     split_base_blocks(optimized_sequence);
     calculate_active_symbol_sets(false);
