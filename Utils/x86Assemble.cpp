@@ -1090,6 +1090,14 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
         case OP_JNZ: {
             int prev_set_instr_like_point = target_text.size() - 1;
+            // get first \t
+            int c = 3;
+            for (; c < target_text.back().length(); ++c) {
+                if (target_text.back()[c] == '\t') {
+                    break;
+                }
+            }
+            string prev_set_instr_op = target_text.back().substr(3, c - 3);
 
             // save out set variables
             for (int out_sym : base_block.out_set) {
@@ -1120,93 +1128,115 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     string jump_dest = to_string(current_quaternion.result + quaternion_idx);
 
                     // generate neg instr
-                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
-                        case OP_EQUAL_INT:
-                        case OP_EQUAL_FLOAT:
-                        case OP_EQUAL_DOUBLE:
-                            target_text.push_back("jne\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_GREATER_INT:
-                        case OP_GREATER_FLOAT:
-                        case OP_GREATER_DOUBLE:
-                            target_text.push_back("jle\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_GREATER_EQUAL_INT:
-                        case OP_GREATER_EQUAL_FLOAT:
-                        case OP_GREATER_EQUAL_DOUBLE:
-                            target_text.push_back("jl\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_LESS_INT:
-                        case OP_LESS_FLOAT:
-                        case OP_LESS_DOUBLE:
-                            target_text.push_back("jge\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_LESS_EQUAL_INT:
-                        case OP_LESS_EQUAL_FLOAT:
-                        case OP_LESS_EQUAL_DOUBLE:
-                            target_text.push_back("jg\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_NOT_EQUAL_INT:
-                        case OP_NOT_EQUAL_FLOAT:
-                        case OP_NOT_EQUAL_DOUBLE:
-                            target_text.push_back("jeq\t\t.L" + jump_dest);
-                            break;
-
-                        default:
-                            // here should not be executed!
-                            break;
+                    // use prev set instr to decide
+                    if (prev_set_instr_op == "eq") {
+                        target_text.push_back("jne\t\t.L" + jump_dest);
                     }
+                    else if (prev_set_instr_op == "g") {
+                        target_text.push_back("jle\t\t.L" + jump_dest);
+                    }
+                    else if (prev_set_instr_op == "ge") {
+                        target_text.push_back("jl\t\t.L" + jump_dest);
+                    }
+                    else if (prev_set_instr_op == "l") {
+                        target_text.push_back("jge\t\t.L" + jump_dest);
+                    }
+                    else if (prev_set_instr_op == "le") {
+                        target_text.push_back("jg\t\t.L" + jump_dest);
+                    }
+                    else if (prev_set_instr_op == "ne") {
+                        target_text.push_back("jeq\t\t.L" + jump_dest);
+                    }
+
+//                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
+//                        case OP_EQUAL_INT:
+//                        case OP_EQUAL_FLOAT:
+//                        case OP_EQUAL_DOUBLE:
+//                            target_text.push_back("jne\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_GREATER_INT:
+//                        case OP_GREATER_FLOAT:
+//                        case OP_GREATER_DOUBLE:
+//                            target_text.push_back("jle\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_GREATER_EQUAL_INT:
+//                        case OP_GREATER_EQUAL_FLOAT:
+//                        case OP_GREATER_EQUAL_DOUBLE:
+//                            target_text.push_back("jl\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_LESS_INT:
+//                        case OP_LESS_FLOAT:
+//                        case OP_LESS_DOUBLE:
+//                            target_text.push_back("jge\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_LESS_EQUAL_INT:
+//                        case OP_LESS_EQUAL_FLOAT:
+//                        case OP_LESS_EQUAL_DOUBLE:
+//                            target_text.push_back("jg\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_NOT_EQUAL_INT:
+//                        case OP_NOT_EQUAL_FLOAT:
+//                        case OP_NOT_EQUAL_DOUBLE:
+//                            target_text.push_back("jeq\t\t.L" + jump_dest);
+//                            break;
+//
+//                        default:
+//                            // here should not be executed!
+//                            break;
+//                    }
                 }
                 else {
                     // generate normal instr
                     string jump_dest = to_string(current_quaternion.result + quaternion_idx);
 
-                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
-                        case OP_EQUAL_INT:
-                        case OP_EQUAL_FLOAT:
-                        case OP_EQUAL_DOUBLE:
-                            target_text.push_back("jeq\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_GREATER_INT:
-                        case OP_GREATER_FLOAT:
-                        case OP_GREATER_DOUBLE:
-                            target_text.push_back("jg\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_GREATER_EQUAL_INT:
-                        case OP_GREATER_EQUAL_FLOAT:
-                        case OP_GREATER_EQUAL_DOUBLE:
-                            target_text.push_back("jge\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_LESS_INT:
-                        case OP_LESS_FLOAT:
-                        case OP_LESS_DOUBLE:
-                            target_text.push_back("jl\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_LESS_EQUAL_INT:
-                        case OP_LESS_EQUAL_FLOAT:
-                        case OP_LESS_EQUAL_DOUBLE:
-                            target_text.push_back("jle\t\t.L" + jump_dest);
-                            break;
-
-                        case OP_NOT_EQUAL_INT:
-                        case OP_NOT_EQUAL_FLOAT:
-                        case OP_NOT_EQUAL_DOUBLE:
-                            target_text.push_back("jne\t\t.L" + jump_dest);
-                            break;
-
-                        default:
-                            // here should not be executed!
-                            break;
-                    }
+                    // use prev set instr to decide
+                    target_text.push_back("j" + prev_set_instr_op + "\t\t.L" + jump_dest);
+//                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
+//                        case OP_EQUAL_INT:
+//                        case OP_EQUAL_FLOAT:
+//                        case OP_EQUAL_DOUBLE:
+//                            target_text.push_back("jeq\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_GREATER_INT:
+//                        case OP_GREATER_FLOAT:
+//                        case OP_GREATER_DOUBLE:
+//                            target_text.push_back("jg\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_GREATER_EQUAL_INT:
+//                        case OP_GREATER_EQUAL_FLOAT:
+//                        case OP_GREATER_EQUAL_DOUBLE:
+//                            target_text.push_back("jge\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_LESS_INT:
+//                        case OP_LESS_FLOAT:
+//                        case OP_LESS_DOUBLE:
+//                            target_text.push_back("jl\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_LESS_EQUAL_INT:
+//                        case OP_LESS_EQUAL_FLOAT:
+//                        case OP_LESS_EQUAL_DOUBLE:
+//                            target_text.push_back("jle\t\t.L" + jump_dest);
+//                            break;
+//
+//                        case OP_NOT_EQUAL_INT:
+//                        case OP_NOT_EQUAL_FLOAT:
+//                        case OP_NOT_EQUAL_DOUBLE:
+//                            target_text.push_back("jne\t\t.L" + jump_dest);
+//                            break;
+//
+//                        default:
+//                            // here should not be executed!
+//                            break;
+//                    }
                 }
             }
             else {
