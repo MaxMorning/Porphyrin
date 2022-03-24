@@ -40,7 +40,7 @@ using namespace std;
 //    R15D
 //};
 
-enum GPR64bit {
+enum GeneralPR {
     AX,
     BX,
     CX,

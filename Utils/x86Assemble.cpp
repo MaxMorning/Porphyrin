@@ -32,6 +32,19 @@ bool target_is_x64;
 int max_gpr_cnt;
 int max_xmm_cnt;
 
+const unordered_map<string, string> condition_negative_map = {
+        {"ne", "e"},
+        {"e", "ne"},
+        {"g", "le"},
+        {"ge", "l"},
+        {"l", "ge"},
+        {"le", "g"},
+        {"a", "be"},
+        {"ae", "b"},
+        {"b", "ae"},
+        {"be", "a"}
+};
+
 bool inline opr_is_stored_in_xmm(SymbolEntry& symbol);
 
 void init_symbol_table_offset(int target_arch) {
@@ -410,7 +423,7 @@ void backup_xmm_to_mem(int xmm_idx, int quaternion_idx, vector<string> &target_t
 
 void move_to_gpr(int gpr_idx, int symbol_idx, vector<string> &target_text)
 {
-    assert(!symbol_table[symbol_idx].is_const);
+//    assert(!symbol_table[symbol_idx].is_const);
 
     target_text.push_back("movl\t" + get_symbol_store_text(symbol_idx) + ", %" + GPRStr[gpr_idx][2]);
 
@@ -424,7 +437,7 @@ void move_to_gpr(int gpr_idx, int symbol_idx, vector<string> &target_text)
 
 void move_to_xmm(int xmm_idx, int symbol_idx, vector<string> &target_text)
 {
-    assert(!symbol_table[symbol_idx].is_const);
+//    assert(!symbol_table[symbol_idx].is_const);
 
     if (symbol_table[symbol_idx].data_type == DT_FLOAT) {
         target_text.push_back("movss\t" + get_symbol_store_text(symbol_idx) + ", %" + XMMRegStr[xmm_idx]);
@@ -488,7 +501,7 @@ int get_gpr_two_opr_with_result(int quaternion_idx, vector<string> &target_text,
         backup_gpr_to_mem(free_gpr, quaternion_idx, target_text, true);
     }
 
-    assert(symbol_table[current_quaternion.opr1].memory_offset != INVALID_MEMORY_OFFSET);
+    assert(symbol_table[current_quaternion.opr1].memory_offset != INVALID_MEMORY_OFFSET || symbol_table[current_quaternion.opr1].is_const);
 
     move_to_gpr(free_gpr, current_quaternion.opr1, target_text);
 
@@ -590,7 +603,7 @@ void release_reg(int quaternion_idx) {
 }
 
 void remove_opr1_set_result(int opr1_idx, int opr1_reg_idx, int result_idx, unordered_set<int> *reg_variable_map) {
-    assert(gpr_variable_map[opr1_reg_idx].size() == 1);
+    assert(gpr_variable_map[opr1_reg_idx].size() == 1 || symbol_table[opr1_idx].is_const);
     reg_variable_map[opr1_reg_idx].clear();
     variable_reg_map[opr1_idx] = -1;
     reg_variable_map[opr1_reg_idx].insert(result_idx);
@@ -692,34 +705,45 @@ int cmp_int_code(int quaternion_idx, vector<string>& target_text, int target_arc
     return result_reg;
 }
 
-int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_arch)
+int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_arch, bool& reverse)
 {
-    // todo not implemented
+    reverse = false;
+    Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
 
-//    Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
-//    int result_reg = alloc_one_free_xmm(quaternion_idx, current_quaternion.result, target_text);
-//    if (symbol_table[current_quaternion.opr1].is_const) {
-//        assert(!symbol_table[current_quaternion.opr2].is_const);
-//        target_text.push_back("ucomiss\t" + get_symbol_store_text(current_quaternion.opr2) +
-//                              ", .RO_" + to_string(symbol_table[current_quaternion.opr1].value.float_value) + ip_str);
-//    }
-//    else if (symbol_table[current_quaternion.opr2].is_const) {
-//        assert(!symbol_table[current_quaternion.opr1].is_const);
-//        target_text.push_back("ucomiss\t.RO_" + to_string(symbol_table[current_quaternion.opr1].value.float_value) + ip_str +
-//                              ", " + get_symbol_store_text(current_quaternion.opr1));
-//    }
-//    else if (variable_reg_map[current_quaternion.opr1] == -1 && variable_reg_map[current_quaternion.opr2] == -1){
-//        // two opr is in memory
-//        // load opr2 from memory
-//        int opr2_reg = alloc_one_free_xmm(quaternion_idx, current_quaternion.result, target_text, target_arch);
-//        target_text.push_back("movl\t" + get_symbol_store_text(current_quaternion.opr2) + ", %" + GPRStr[opr2_reg][2]);
-//        target_text.push_back("cmpl\t%" + GPRStr[opr2_reg][2] + ", " + get_symbol_store_text(current_quaternion.opr1));
-//    }
-//    else {
-//        target_text.push_back("cmpl\t" + get_symbol_store_text(current_quaternion.opr2) + ", " + get_symbol_store_text(current_quaternion.opr1));
-//    }
-//
-//    return result_reg;
+    bool is_double = symbol_table[current_quaternion.opr1].data_type == DT_DOUBLE;
+
+    string comp_str = is_double ? "ucomisd\t" : "ucomiss\t";
+    string mov_str = is_double ? "movsd\t" : "movss\t";
+
+    if (variable_reg_map[current_quaternion.opr1] != -1) {
+        if (variable_reg_map[current_quaternion.opr2] != -1) {
+            // two opr is in xmm
+            target_text.push_back(comp_str + "%" + XMMRegStr[current_quaternion.opr2] + ", %" + XMMRegStr[current_quaternion.opr1]);
+        }
+        else {
+            // opr1 in xmm, opr2 in mem
+            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr2) + ", %" + XMMRegStr[current_quaternion.opr1]);
+        }
+    }
+    else {
+        if (variable_reg_map[current_quaternion.opr2] != -1) {
+            // opr1 in mem, opr2 in xmm
+            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[current_quaternion.opr2]);
+            reverse = true;
+        }
+        else {
+            // opr1 in mem, opr2 in mem
+            // load opr1 from memory
+            int opr1_reg = alloc_one_free_xmm(quaternion_idx, current_quaternion.opr1, target_text, true);
+
+            target_text.push_back(mov_str + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[opr1_reg]);
+            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr2) + ", %" + XMMRegStr[opr1_reg]);
+        }
+    }
+
+    int result_reg = alloc_one_free_xmm(quaternion_idx, current_quaternion.result, target_text, true);
+
+    return result_reg;
 }
 
 void gen_swap_reg_text(int reg_0, int reg_1, vector<string>& target_text, bool is_xmm)
@@ -782,6 +806,84 @@ void lock_symbol_to_gpr(int symbol_idx, int target_reg, vector<string>& target_t
 
 
     gpr_locked[target_reg] = true;
+}
+
+void lock_symbol_to_xmm(int symbol_idx, int target_reg, vector<string>& target_text, int quaternion_idx)
+{
+    cout << "LOCK " << variable_reg_map[symbol_idx] << '\t' << target_reg << endl;
+    // symbol already in target reg
+    if (variable_reg_map[symbol_idx] != target_reg) {
+        if (xmm_variable_map[target_reg].empty()) {
+            // target reg is empty
+            target_text.push_back("movl\t" + get_symbol_store_text(symbol_idx) + ", %" + XMMRegStr[target_reg]);
+            // keep mapping
+            xmm_variable_map[target_reg].insert(symbol_idx);
+            variable_reg_map[symbol_idx] = target_reg;
+        }
+        else {
+            if (variable_reg_map[symbol_idx] != -1 && !xmm_locked[variable_reg_map[symbol_idx]]) {
+                // symbol stores in register and this register is unlocked
+                gen_swap_reg_text(variable_reg_map[symbol_idx], target_reg, target_text, false);
+            }
+            else {
+                // try to get a free register r2
+                int allocated_xmm = alloc_one_free_xmm(quaternion_idx, 0, target_text, false); // when set_mapping is false, symbol_idx is useless
+                assert(xmm_variable_map[allocated_xmm].empty());
+                if (allocated_xmm != target_reg) {
+                    // copy target reg values to allocated_xmm
+                    target_text.push_back("movl\t%" + XMMRegStr[target_reg] + ", %" + XMMRegStr[allocated_xmm]);
+                    // keep mapping
+                    for (int symbol_in_target_xmm : xmm_variable_map[target_reg]) {
+                        xmm_variable_map[allocated_xmm].insert(symbol_in_target_xmm);
+                        variable_reg_map[symbol_in_target_xmm] = allocated_xmm;
+                    }
+                    xmm_variable_map[target_reg].clear();
+                }
+
+                // copy symbol to target_reg
+                target_text.push_back("movl\t" + get_symbol_store_text(symbol_idx) + ", %" + XMMRegStr[target_reg]);
+                // keep mapping
+                xmm_variable_map[target_reg].insert(symbol_idx);
+                xmm_variable_map[variable_reg_map[symbol_idx]].erase(symbol_idx);
+                variable_reg_map[symbol_idx] = target_reg;
+            }
+        }
+    }
+
+
+    xmm_locked[target_reg] = true;
+}
+
+void div_gpr_code(int quaternion_idx, vector<string>& target_text)
+{
+    Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
+    QuaternionActiveInfo& active_info = quaternion_active_info_table[quaternion_idx];
+
+    // backup DX content
+    backup_gpr_to_mem(GeneralPR::DX, quaternion_idx, target_text, false);
+
+    // backup opr1 to mem if it will be used later and stored in gpr
+    if (active_info.opr1_active_info != NON_ACTIVE && variable_reg_map[current_quaternion.opr1] != -1) {
+        generate_store(variable_reg_map[current_quaternion.opr1], current_quaternion.opr1, target_text);
+    }
+
+    // move opr1 to ax
+    lock_symbol_to_gpr(current_quaternion.opr1, GeneralPR::AX, target_text, quaternion_idx);
+    gpr_locked[GeneralPR::AX] = false;
+
+    // generate div instruction
+    target_text.push_back("idiv\t" + get_symbol_store_text(current_quaternion.opr2));
+
+    // now result in ax
+    assert(gpr_variable_map[GeneralPR::AX].empty());
+
+    gpr_variable_map[GeneralPR::AX].insert(current_quaternion.result);
+    variable_reg_map[current_quaternion.result] = GeneralPR::AX;
+}
+
+void div_xmm_code()
+{
+
 }
 
 void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, int target_arch, BaseBlock& base_block) {
@@ -913,7 +1015,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_ADD_INT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -933,7 +1035,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_ADD_FLOAT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -952,7 +1054,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_ADD_DOUBLE: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -971,7 +1073,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MINUS_INT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -991,7 +1093,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MINUS_FLOAT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -1010,7 +1112,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MINUS_DOUBLE: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -1029,7 +1131,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MULTI_INT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -1049,7 +1151,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MULTI_FLOAT: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -1068,7 +1170,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_MULTI_DOUBLE: {
-            assert(!symbol_table[current_quaternion.opr1].is_const);
+//            assert(!symbol_table[current_quaternion.opr1].is_const);
             int opr1_reg_idx = get_gpr_two_opr_with_result(quaternion_idx, target_text, target_arch);
             if (symbol_table[current_quaternion.opr2].is_const) {
                 // opr2 is const
@@ -1086,20 +1188,25 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
             break;
         }
 
-        case OP_DIV_INT:
+        case OP_DIV_INT: {
+            div_gpr_code(quaternion_idx, target_text);
             break;
+        }
+
         case OP_DIV_FLOAT:
-            break;
         case OP_DIV_DOUBLE:
+        {
             break;
+        }
+
         case OP_COMMA:
-            break;
         case OP_LOGIC_OR:
-            break;
         case OP_LOGIC_AND:
-            break;
         case OP_LOGIC_NOT:
+        {
             break;
+        }
+
         case OP_JEQ: {
             throw "You need implement jeq instr now!!";
 
@@ -1134,7 +1241,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                 optimized_sequence[quaternion_idx - 1].op_code >= OP_EQUAL_INT && optimized_sequence[quaternion_idx - 1].op_code <= OP_NOT_EQUAL_DOUBLE) {
                 assert(target_text[prev_set_instr_like_point].substr(0, 3) == "set");
 
-//                cout << "Optimize " << quaternion_idx << " Hit" << endl;
+                cout << "Optimize " << quaternion_idx << " Hit" << endl;
                 target_text[prev_set_instr_like_point] = "";
 
                 // optimize jz
@@ -1145,68 +1252,9 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
                     string jump_dest = to_string(current_quaternion.result + quaternion_idx);
 
-                    // generate neg instr
+                    // generate neg instr via condition_negative_map
                     // use prev set instr to decide
-                    if (prev_set_instr_op == "eq") {
-                        target_text.push_back("jne\t\t.L" + jump_dest);
-                    }
-                    else if (prev_set_instr_op == "g") {
-                        target_text.push_back("jle\t\t.L" + jump_dest);
-                    }
-                    else if (prev_set_instr_op == "ge") {
-                        target_text.push_back("jl\t\t.L" + jump_dest);
-                    }
-                    else if (prev_set_instr_op == "l") {
-                        target_text.push_back("jge\t\t.L" + jump_dest);
-                    }
-                    else if (prev_set_instr_op == "le") {
-                        target_text.push_back("jg\t\t.L" + jump_dest);
-                    }
-                    else if (prev_set_instr_op == "ne") {
-                        target_text.push_back("jeq\t\t.L" + jump_dest);
-                    }
-
-//                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
-//                        case OP_EQUAL_INT:
-//                        case OP_EQUAL_FLOAT:
-//                        case OP_EQUAL_DOUBLE:
-//                            target_text.push_back("jne\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_GREATER_INT:
-//                        case OP_GREATER_FLOAT:
-//                        case OP_GREATER_DOUBLE:
-//                            target_text.push_back("jle\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_GREATER_EQUAL_INT:
-//                        case OP_GREATER_EQUAL_FLOAT:
-//                        case OP_GREATER_EQUAL_DOUBLE:
-//                            target_text.push_back("jl\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_LESS_INT:
-//                        case OP_LESS_FLOAT:
-//                        case OP_LESS_DOUBLE:
-//                            target_text.push_back("jge\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_LESS_EQUAL_INT:
-//                        case OP_LESS_EQUAL_FLOAT:
-//                        case OP_LESS_EQUAL_DOUBLE:
-//                            target_text.push_back("jg\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_NOT_EQUAL_INT:
-//                        case OP_NOT_EQUAL_FLOAT:
-//                        case OP_NOT_EQUAL_DOUBLE:
-//                            target_text.push_back("jeq\t\t.L" + jump_dest);
-//                            break;
-//
-//                        default:
-//                            // here should not be executed!
-//                            break;
-//                    }
+                    target_text.push_back("j" + condition_negative_map.find(prev_set_instr_op)->second + "\t\t.L" + jump_dest);
                 }
                 else {
                     // generate normal instr
@@ -1214,47 +1262,6 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
                     // use prev set instr to decide
                     target_text.push_back("j" + prev_set_instr_op + "\t\t.L" + jump_dest);
-//                    switch (optimized_sequence[quaternion_idx - 1].op_code) {
-//                        case OP_EQUAL_INT:
-//                        case OP_EQUAL_FLOAT:
-//                        case OP_EQUAL_DOUBLE:
-//                            target_text.push_back("jeq\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_GREATER_INT:
-//                        case OP_GREATER_FLOAT:
-//                        case OP_GREATER_DOUBLE:
-//                            target_text.push_back("jg\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_GREATER_EQUAL_INT:
-//                        case OP_GREATER_EQUAL_FLOAT:
-//                        case OP_GREATER_EQUAL_DOUBLE:
-//                            target_text.push_back("jge\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_LESS_INT:
-//                        case OP_LESS_FLOAT:
-//                        case OP_LESS_DOUBLE:
-//                            target_text.push_back("jl\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_LESS_EQUAL_INT:
-//                        case OP_LESS_EQUAL_FLOAT:
-//                        case OP_LESS_EQUAL_DOUBLE:
-//                            target_text.push_back("jle\t\t.L" + jump_dest);
-//                            break;
-//
-//                        case OP_NOT_EQUAL_INT:
-//                        case OP_NOT_EQUAL_FLOAT:
-//                        case OP_NOT_EQUAL_DOUBLE:
-//                            target_text.push_back("jne\t\t.L" + jump_dest);
-//                            break;
-//
-//                        default:
-//                            // here should not be executed!
-//                            break;
-//                    }
                 }
             }
             else {
@@ -1333,12 +1340,29 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_FETCH_DOUBLE:
             break;
         case OP_EQUAL_INT:
+        {
+            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+
+            target_text.push_back("sete\t%" + GPRStr[result_reg][0]);
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_EQUAL_FLOAT:
-            break;
         case OP_EQUAL_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            target_text.push_back("sete\t%" + GPRStr[result_reg][0]);
+
+            last_calc_symbol = current_quaternion.result;
             break;
-        case OP_GREATER_INT: {
+        }
+
+        case OP_GREATER_INT:
+        {
             int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
 
             target_text.push_back("setg\t%" + GPRStr[result_reg][0]);
@@ -1348,15 +1372,47 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_GREATER_FLOAT:
-            break;
         case OP_GREATER_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            if (!reverse) {
+                target_text.push_back("seta\t%" + GPRStr[result_reg][0]);
+            }
+            else {
+                target_text.push_back("setbe\t%" + GPRStr[result_reg][0]);
+            }
+
+            last_calc_symbol = current_quaternion.result;
             break;
-        case OP_GREATER_EQUAL_INT:
+        }
+
+        case OP_GREATER_EQUAL_INT:{
+            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+
+            target_text.push_back("setge\t%" + GPRStr[result_reg][0]);
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_GREATER_EQUAL_FLOAT:
-            break;
         case OP_GREATER_EQUAL_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            if (!reverse) {
+                target_text.push_back("setae\t%" + GPRStr[result_reg][0]);
+            }
+            else {
+                target_text.push_back("setb\t%" + GPRStr[result_reg][0]);
+            }
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
 
         case OP_LESS_INT: {
             int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
@@ -1368,9 +1424,22 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_LESS_FLOAT:
-            break;
         case OP_LESS_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            if (!reverse) {
+                target_text.push_back("setb\t%" + GPRStr[result_reg][0]);
+            }
+            else {
+                target_text.push_back("setae\t%" + GPRStr[result_reg][0]);
+            }
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_LESS_EQUAL_INT: {
             int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
 
@@ -1381,15 +1450,44 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_LESS_EQUAL_FLOAT:
-            break;
         case OP_LESS_EQUAL_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            if (!reverse) {
+                target_text.push_back("setbe\t%" + GPRStr[result_reg][0]);
+            }
+            else {
+                target_text.push_back("seta\t%" + GPRStr[result_reg][0]);
+            }
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_NOT_EQUAL_INT:
+        {
+            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+
+            target_text.push_back("setne\t%" + GPRStr[result_reg][0]);
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_NOT_EQUAL_FLOAT:
-            break;
         case OP_NOT_EQUAL_DOUBLE:
+        {
+            bool reverse;
+            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+
+            target_text.push_back("setne\t%" + GPRStr[result_reg][0]);
+
+            last_calc_symbol = current_quaternion.result;
             break;
+        }
+
         case OP_NEG:
             break;
         case OP_PAR: {
@@ -1410,7 +1508,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                 }
                 else {
                     // use xmm[par_usable_xmm_index] to pass argument
-                    // todo not implemented
+                    lock_symbol_to_xmm(current_quaternion.opr1, par_usable_xmm_index, target_text, quaternion_idx);
 
                     ++par_usable_xmm_index;
                 }
@@ -1433,7 +1531,10 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     else {
                         if (variable_reg_map[current_quaternion.opr1] != -1) {
                             // store in reg
-                            target_text.push_back("pushq\t%" + GPRStr[variable_reg_map[current_quaternion.opr1]][target_arch == TARGET_ARCH_X64 ? 3 : 2]);
+                            target_text.push_back("pushl\t%" + GPRStr[variable_reg_map[current_quaternion.opr1]][2]);
+                        }
+                        else {
+                            target_text.push_back("push" + string(target_arch == TARGET_ARCH_X64 ? "q" : "l") + "\t$" + get_symbol_store_text(current_quaternion.opr1));
                         }
                     }
                 }
@@ -1527,6 +1628,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
             break;
         }
+
         case OP_BOOL_TO_CHAR:
             break;
         case OP_BOOL_TO_INT:
