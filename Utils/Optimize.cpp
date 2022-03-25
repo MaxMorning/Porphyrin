@@ -27,7 +27,7 @@ int is_branch_IR(const Quaternion& quaternion, int quaternion_index)
        ) {
         return quaternion_index + quaternion.result;
     }
-    else if (op_code == OP_CALL) {
+    else if (op_code == OP_CALL || op_code == OP_ARRAY_STORE) {
 //        return Function::function_table[quaternion.opr1].entry_address;
         return quaternion_index + 1;
     }
@@ -1429,23 +1429,26 @@ void optimize_base_block(BaseBlock& base_block)
 
             case OP_ARRAY_STORE:
             {
-                int opr1_node_index, opr2_node_index;
-
-                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-
-                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index,
-                                                                   false);
-                if (search_common_expr_index == -1) {
-                    // no such common expr
-                    int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-                    dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-                    dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-                }
-                else {
-                    // find common expr
-                    dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-                    variable_dag_node_map[quaternion.result] = search_common_expr_index;
-                }
+                base_block.out_set.insert(quaternion.opr1);
+                base_block.out_set.insert(quaternion.opr2);
+//                int opr1_node_index, opr2_node_index;
+//
+//                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
+//
+//                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index,
+//                                                                   false);
+//                if (search_common_expr_index == -1) {
+//                    // no such common expr
+//                    int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
+//                    dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
+//                    dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
+//                    base_block.array_store_dags.insert(result_node_index);
+//                }
+//                else {
+//                    // find common expr
+//                    dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
+//                    variable_dag_node_map[quaternion.result] = search_common_expr_index;
+//                }
 
                 break;
             }
@@ -1485,15 +1488,15 @@ void optimize_base_block(BaseBlock& base_block)
     }
 
     // add used / assigned arr to out set
-    for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
-        Quaternion& quaternion = quaternion_sequence[i];
-        if (quaternion.op_code == OP_ARRAY_STORE) {
-            base_block.out_set.emplace(quaternion.result);
-        }
-        else if (quaternion.op_code >= OP_FETCH_BOOL && quaternion.op_code <= OP_FETCH_DOUBLE) {
-            base_block.out_set.emplace(quaternion.opr1);
-        }
-    }
+//    for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
+//        Quaternion& quaternion = quaternion_sequence[i];
+//        if (quaternion.op_code == OP_ARRAY_STORE) {
+//            base_block.out_set.emplace(quaternion.result);
+//        }
+//        else if (quaternion.op_code >= OP_FETCH_BOOL && quaternion.op_code <= OP_FETCH_DOUBLE) {
+//            base_block.out_set.emplace(quaternion.opr1);
+//        }
+//    }
 
 #ifdef OPTIMIZE_DEBUG
     print_dag_nodes();
@@ -1522,6 +1525,11 @@ void optimize_base_block(BaseBlock& base_block)
         }
     }
 
+//    // generate array store
+//    for (int array_store_dag_idx : base_block.array_store_dags) {
+//        generate_quaternions(*dag_nodes[array_store_dag_idx], base_block.block_quaternion_sequence);
+//    }
+
     // process 2 out active var use one DAG node
     for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1 && dag_nodes[variable_dag_node_map[out_active_symbol]]->symbol_index != out_active_symbol) {
@@ -1530,7 +1538,7 @@ void optimize_base_block(BaseBlock& base_block)
         }
     }
 
-    // insert PAR / ARRAY_STORE instr
+    // insert PAR instr
     for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
         if (quaternion_sequence[i].op_code == OP_PAR) {
             if (variable_dag_node_map[quaternion_sequence[i].opr1] == -1) {
@@ -1552,7 +1560,7 @@ void optimize_base_block(BaseBlock& base_block)
     Quaternion post_process_last_quaternion = quaternion_sequence[base_block.end_index];
     if (post_process_last_quaternion.op_code == OP_CALL || post_process_last_quaternion.op_code == OP_JMP ||
             post_process_last_quaternion.op_code == OP_JNZ || post_process_last_quaternion.op_code == OP_JEQ
-            || post_process_last_quaternion.op_code == OP_RETURN) {
+            || post_process_last_quaternion.op_code == OP_RETURN || post_process_last_quaternion.op_code == OP_ARRAY_STORE) {
         if (post_process_last_quaternion.opr1 != -1 && OP_CODE_OPR_USAGE[post_process_last_quaternion.op_code][0] == USAGE_VAR
         && variable_dag_node_map[post_process_last_quaternion.opr1] != -1) {
             post_process_last_quaternion.opr1 = dag_nodes[variable_dag_node_map[post_process_last_quaternion.opr1]]->symbol_index;

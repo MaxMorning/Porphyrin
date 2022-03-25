@@ -1170,7 +1170,13 @@ void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char si
     Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
 
     string mov_op = symbol_table[current_quaternion.result].data_type == DT_BOOL ? "movb" : "movl";
-    int result_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+    int opr1_gpr = variable_reg_map[current_quaternion.opr1];
+    if (opr1_gpr == -1) {
+        opr1_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+
+        move_to_gpr(opr1_gpr, current_quaternion.opr1, target_text);
+    }
+
     int offset_gpr = variable_reg_map[current_quaternion.opr2];
     if (offset_gpr == -1) {
         // load from mem
@@ -1196,10 +1202,10 @@ void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char si
 
         if (target_is_x64) {
             target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
         }
         else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + ")");
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + ")");
         }
 
         gpr_set_mapping(current_quaternion.opr1, base_gpr);
@@ -1208,15 +1214,15 @@ void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char si
         // local array
         if (target_is_x64) {
             target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
         }
         else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][2] + ", " + size + ")");
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][2] + ", " + size + ")");
         }
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
-    gpr_set_mapping(current_quaternion.result, result_gpr);
+    gpr_set_mapping(current_quaternion.opr1, opr1_gpr);
 }
 
 void store_xmm_to_array(int quaternion_idx, vector<string>& target_text, char size)
