@@ -233,8 +233,9 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
             int proc_par_usable_xmm_index = 1;
             for (int param_idx = function.parameter_index.size() - 1; param_idx >= 0; --param_idx) {
                 if (opr_is_stored_in_xmm(symbol_table[function.parameter_index[param_idx]])) {
-                    xmm_variable_map[par_usable_xmm_index].insert(function.parameter_index[param_idx]);
-                    variable_reg_map[function.parameter_index[param_idx]] = par_usable_xmm_index;
+                    xmm_variable_map[proc_par_usable_xmm_index].insert(function.parameter_index[param_idx]);
+                    variable_reg_map[function.parameter_index[param_idx]] = proc_par_usable_xmm_index;
+                    xmm_locked[proc_par_usable_xmm_index] = true;
                     ++proc_par_usable_xmm_index;
 
                     if (proc_par_usable_xmm_index >= max_xmm_cnt) {
@@ -242,8 +243,9 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                     }
                 }
                 else {
-                    gpr_variable_map[par_usable_gpr_index].insert(function.parameter_index[param_idx]);
-                    variable_reg_map[function.parameter_index[param_idx]] = par_usable_gpr_index;
+                    gpr_variable_map[proc_par_usable_gpr_index].insert(function.parameter_index[param_idx]);
+                    variable_reg_map[function.parameter_index[param_idx]] = proc_par_usable_gpr_index;
+                    gpr_locked[proc_par_usable_gpr_index] = true;
                     ++proc_par_usable_gpr_index;
 
                     if (proc_par_usable_gpr_index >= max_gpr_cnt) {
@@ -309,6 +311,12 @@ void generate_store(int reg_idx, int store_var_idx, vector<string> &target_text)
     }
 
     variable_reg_map[store_var_idx] = -1;
+    if (opr_is_stored_in_xmm(symbol_table[store_var_idx])) {
+        xmm_locked[reg_idx] = false;
+    }
+    else {
+        gpr_locked[reg_idx] = false;
+    }
 }
 
 int search_free_register(bool is_xmm)
@@ -645,8 +653,11 @@ void release_reg(int quaternion_idx) {
         if (current_info.opr1_active_info == NON_ACTIVE) {
             // release reg
             SymbolEntry &symbol = symbol_table[current_quaternion.opr1];
-            if (variable_reg_map[current_quaternion.opr1] != -1) {
-                if ((symbol.is_array && !symbol.is_temp) || symbol.data_type == DT_BOOL || symbol.data_type == DT_INT) {
+            bool opr1_equal_result = (OP_CODE_OPR_USAGE[current_quaternion.op_code][2] == USAGE_VAR ||
+                                      OP_CODE_OPR_USAGE[current_quaternion.op_code][2] == USAGE_ARRAY)
+                                              && (current_quaternion.opr1 == current_quaternion.result);
+            if (variable_reg_map[current_quaternion.opr1] != -1 && !opr1_equal_result) {
+                if (!opr_is_stored_in_xmm(symbol)) {
                     gpr_variable_map[variable_reg_map[current_quaternion.opr1]].erase(current_quaternion.opr1);
                 }
                 else {
@@ -662,8 +673,11 @@ void release_reg(int quaternion_idx) {
         if (current_info.opr2_active_info == NON_ACTIVE) {
             // release reg
             SymbolEntry &symbol = symbol_table[current_quaternion.opr2];
-            if (variable_reg_map[current_quaternion.opr2] != -1) {
-                if ((symbol.is_array && !symbol.is_temp) || symbol.data_type == DT_BOOL || symbol.data_type == DT_INT) {
+            bool opr2_equal_result = (OP_CODE_OPR_USAGE[current_quaternion.op_code][2] == USAGE_VAR ||
+                                      OP_CODE_OPR_USAGE[current_quaternion.op_code][2] == USAGE_ARRAY)
+                                     && (current_quaternion.opr2 == current_quaternion.result);
+            if (variable_reg_map[current_quaternion.opr2] != -1 && !opr2_equal_result) {
+                if (!opr_is_stored_in_xmm(symbol)) {
                     gpr_variable_map[variable_reg_map[current_quaternion.opr2]].erase(current_quaternion.opr2);
                 }
                 else {
@@ -1669,6 +1683,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_JMP: {
             // save out set variables
             for (int out_sym : base_block.out_set) {
+                cout << base_block.start_index << "\tOutSym\t" << out_sym << "\tReg\t" << variable_reg_map[out_sym] << endl;
                 if (variable_reg_map[out_sym] != -1) {
                     // stores in reg, need write back
                     generate_store(variable_reg_map[out_sym], out_sym, target_text);

@@ -1745,6 +1745,13 @@ void symbol_clean_up()
         }
     }
 
+    // update function param table
+    for (Function& function : Function::function_table) {
+        for (int i = 0; i < function.parameter_index.size(); ++i) {
+            function.parameter_index[i] = old_new_mapping[function.parameter_index[i]];
+        }
+    }
+
     delete[] old_new_mapping;
 // todo not implemented
 }
