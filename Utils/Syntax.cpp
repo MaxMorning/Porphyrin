@@ -536,7 +536,6 @@ bool syntax_analysis(string processed_code, Node*& root)
     while (current_state >= 0) {
         if (current_lex.lex_type == EPSILON) {
             current_lex = get_next_lexicon(processing_idx, processed_code);
-            cout << current_lex.lex_content << endl;
         }
         // TODO NOTICE
         // lex_ana_result[ana_index].lex_type is only for debugging
