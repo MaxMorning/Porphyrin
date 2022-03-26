@@ -1721,6 +1721,13 @@ void symbol_clean_up()
         }
     }
 
+    // all function parameter is used
+    for (Function& function : Function::function_table) {
+        for (int symbol : function.parameter_index) {
+            symbol_table[symbol].is_used = true;
+        }
+    }
+
     vector<SymbolEntry> used_temp_symbol_entry;
     for (int i = 0; i < symbol_table.size(); ++i) {
         if (symbol_table[i].is_used) {

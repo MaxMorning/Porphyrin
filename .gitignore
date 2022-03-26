@@ -8,3 +8,5 @@ TestDir/*.txt
 TestDir/*.asm
 TestDir/*.o
 TestDir/g--
+TestDir/test_gcc
+TestDir/test

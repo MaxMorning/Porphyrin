@@ -39,13 +39,13 @@ double calc_pi()
     double sum = 0;
     int signal = 1;
 
-    while (i < 40) {
-        sum = sum + signal * to_float(i);
+    while (i < 214748360) {
+        sum = sum + signal / to_float(i);
         i = i + 2;
         signal = -signal;
     }
 
     sum = sum * 4;
 
-    return 5.2;
+    return sum;
 }

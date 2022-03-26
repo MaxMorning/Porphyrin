@@ -233,7 +233,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                 if (opr_is_stored_in_xmm(symbol_table[function.parameter_index[param_idx]])) {
                     xmm_variable_map[proc_par_usable_xmm_index].insert(function.parameter_index[param_idx]);
                     variable_reg_map[function.parameter_index[param_idx]] = proc_par_usable_xmm_index;
-                    xmm_locked[proc_par_usable_xmm_index] = true;
+                    xmm_locked[proc_par_usable_xmm_index] = false;
                     ++proc_par_usable_xmm_index;
 
                     if (proc_par_usable_xmm_index >= max_xmm_cnt) {
@@ -243,7 +243,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                 else {
                     gpr_variable_map[proc_par_usable_gpr_index].insert(function.parameter_index[param_idx]);
                     variable_reg_map[function.parameter_index[param_idx]] = proc_par_usable_gpr_index;
-                    gpr_locked[proc_par_usable_gpr_index] = true;
+                    gpr_locked[proc_par_usable_gpr_index] = false;
                     ++proc_par_usable_gpr_index;
 
                     if (proc_par_usable_gpr_index >= max_gpr_cnt) {
@@ -269,12 +269,14 @@ void generate_store(int reg_idx, int store_var_idx, vector<string> &target_text)
         dst_str = symbol_table[store_var_idx].content + ip_str;
     }
     else {
-        int arch_unit = target_is_x64 ? -8 : -4;
+        int arch_unit = target_is_x64 ? 8 : 4;
         if (symbol_table[store_var_idx].memory_offset == INVALID_MEMORY_OFFSET) {
             int target_mem_offset = current_stack_top_addr - symbol_table[store_var_idx].memory_size;
-            if (target_mem_offset % BASE_DATA_TYPE_SIZE[symbol_table[store_var_idx].data_type] != 0) {
-                target_mem_offset -= target_mem_offset % BASE_DATA_TYPE_SIZE[symbol_table[store_var_idx].data_type] + BASE_DATA_TYPE_SIZE[symbol_table[store_var_idx].data_type];
+            int free_space = (current_stack_top_addr) % arch_unit + arch_unit;
+            if (free_space < BASE_DATA_TYPE_SIZE[symbol_table[store_var_idx].data_type]) {
+                target_mem_offset -= free_space;
             }
+
             symbol_table[store_var_idx].memory_offset = target_mem_offset;
             current_stack_top_addr = target_mem_offset;
         }
@@ -1870,10 +1872,11 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                 // stores in gpr
                 int opr1_reg = get_gpr_two_opr_with_result(quaternion_idx, target_text);
 
-                target_text.push_back("neg\t%" + GPRStr[opr1_reg][2]);
-
-                remove_opr1_set_result(current_quaternion.opr1, opr1_reg, current_quaternion.result, gpr_variable_map);
+                target_text.push_back("neg\t\t%" + GPRStr[opr1_reg][2]);
             }
+
+            // don't need release, return directly
+            return;
             break;
         }
 
@@ -2295,7 +2298,6 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
     }
 
     release_reg(quaternion_idx);
-//    throw "Not Implemented!";
 }
 
 void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text, int target_arch) {
