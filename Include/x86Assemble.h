@@ -142,7 +142,7 @@ struct QuaternionActiveInfo {
     int result_active_info;
 };
 
-void generate_target_asm(string& target_string_str, int target_arch);
+void generate_target_asm(string& target_string_str);
 
 void write_target_code(string& target_string_stream, ofstream& output_file);
 

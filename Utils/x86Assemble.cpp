@@ -17,7 +17,6 @@
 #define NON_ACTIVE -1
 
 #define X64GPRCNT 14
-#define X86GPRCNT 6
 
 #define X64XMMCNT 16
 
@@ -28,10 +27,6 @@
 // architecture related variables
 string ip_str;
 string bp_str;
-bool target_is_x64;
-
-int max_gpr_cnt;
-int max_xmm_cnt;
 
 const unordered_map<string, string> condition_negative_map = {
         {"ne", "e"},
@@ -48,13 +43,13 @@ const unordered_map<string, string> condition_negative_map = {
 
 bool inline opr_is_stored_in_xmm(SymbolEntry& symbol);
 
-void init_symbol_table_offset(int target_arch) {
+void init_symbol_table_offset() {
     for (SymbolEntry &symbol: symbol_table) {
         symbol.memory_offset = INVALID_MEMORY_OFFSET;
     }
 
     // process function parameter offset
-    int address_length = target_arch == TARGET_ARCH_X64 ? 8 : 4;
+    int address_length = 8;
     for (Function &function: Function::function_table) {
         // don't set parameter which will be stored in register
         // count parameter store in xmm
@@ -65,8 +60,8 @@ void init_symbol_table_offset(int target_arch) {
             }
         }
 
-        int store_in_mem_xmm = max(0, xmm_cnt - max_xmm_cnt + 1); // float / double parameter which will store in memory
-        int store_in_mem_gpr = max(0, (int)(function.parameter_index.size() - xmm_cnt) - max_gpr_cnt + 1); // other parameter which will store in memory
+        int store_in_mem_xmm = max(0, xmm_cnt - X64XMMCNT + 1); // float / double parameter which will store in memory
+        int store_in_mem_gpr = max(0, (int)(function.parameter_index.size() - xmm_cnt) - X64GPRCNT + 1); // other parameter which will store in memory
 
         int mem_xmm_cnt = 0; // processed float/double parameter which will store in memory count
         int mem_gpr_cnt = 0; // processed other parameter which will store in memory count
@@ -188,7 +183,7 @@ bool inline opr_is_stored_in_xmm(SymbolEntry& symbol)
 int par_usable_gpr_index;
 int par_usable_xmm_index;
 
-bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int target_arch) {
+bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
     if (last_call_return_symbol != -1) {
         if (opr_is_stored_in_xmm(symbol_table[last_call_return_symbol])) {
             xmm_variable_map[0].insert(last_call_return_symbol);
@@ -227,7 +222,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                     }
 
                     if (!is_param) {
-                        int arch_unit = target_is_x64 ? 8 : 4;
+                        int arch_unit = 8;
                         int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_idx]);
 
                         if (free_space != 0) {
@@ -257,7 +252,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                     xmm_locked[proc_par_usable_xmm_index] = false;
                     ++proc_par_usable_xmm_index;
 
-                    if (proc_par_usable_xmm_index >= max_xmm_cnt) {
+                    if (proc_par_usable_xmm_index >= X64XMMCNT) {
                         break;
                     }
                 }
@@ -267,7 +262,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
                     gpr_locked[proc_par_usable_gpr_index] = false;
                     ++proc_par_usable_gpr_index;
 
-                    if (proc_par_usable_gpr_index >= max_gpr_cnt) {
+                    if (proc_par_usable_gpr_index >= X64GPRCNT) {
                         break;
                     }
                 }
@@ -290,7 +285,7 @@ void generate_store(int reg_idx, int store_var_idx, vector<string> &target_text)
         dst_str = symbol_table[store_var_idx].content + ip_str;
     }
     else {
-        int arch_unit = target_is_x64 ? 8 : 4;
+        int arch_unit = 8;
         if (symbol_table[store_var_idx].memory_offset == INVALID_MEMORY_OFFSET) {
             int target_mem_offset = current_stack_top_addr - symbol_table[store_var_idx].memory_size;
             int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_table[store_var_idx].data_type]);
@@ -343,7 +338,7 @@ void generate_store(int reg_idx, int store_var_idx, vector<string> &target_text)
 int search_free_register(bool is_xmm)
 {
     if (is_xmm) {
-        for (int i = 0; i < max_xmm_cnt; ++i) {
+        for (int i = 0; i < X64XMMCNT; ++i) {
             if (xmm_variable_map[i].empty() && !xmm_locked[i]) {
                 return i;
             }
@@ -352,7 +347,7 @@ int search_free_register(bool is_xmm)
         return -1;
     }
     else {
-        for (int i = 0; i < max_gpr_cnt; ++i) {
+        for (int i = 0; i < X64GPRCNT; ++i) {
             if (gpr_variable_map[i].empty() && !gpr_locked[i]) {
                 return i;
             }
@@ -367,7 +362,7 @@ int search_unlucky_gpr(int quaternion_idx)
     int max_score = -3;
     int chosen_reg_idx = -1;
 
-    for (int i = 0; i < max_gpr_cnt; ++i) {
+    for (int i = 0; i < X64GPRCNT; ++i) {
         if (gpr_locked[i]) {
             continue;
         }
@@ -405,7 +400,7 @@ int search_unlucky_xmm(int quaternion_idx)
     int max_score = -3;
     int chosen_reg_idx = -1;
 
-    for (int i = 0; i < max_xmm_cnt; ++i) {
+    for (int i = 0; i < X64XMMCNT; ++i) {
         // check min usage position
         int min_next_use = 2147483647;
         // find var in memory
@@ -759,7 +754,7 @@ string get_symbol_store_text(int symbol_index)
             }
         }
         else {
-            return '%' + GPRStr[variable_reg_map[symbol_index]][target_is_x64 ? 3 : 2];
+            return '%' + GPRStr[variable_reg_map[symbol_index]][3];
         }
     }
 
@@ -797,7 +792,7 @@ string get_symbol_store_text(int symbol_index)
     }
 }
 
-int cmp_int_code(int quaternion_idx, vector<string>& target_text, int target_arch)
+int cmp_int_code(int quaternion_idx, vector<string>& target_text)
 {
     Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
 
@@ -831,7 +826,7 @@ int cmp_int_code(int quaternion_idx, vector<string>& target_text, int target_arc
     return result_reg;
 }
 
-int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_arch, bool& reverse)
+int cmp_float_code(int quaternion_idx, vector<string>& target_text, bool& reverse)
 {
     reverse = false;
     Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
@@ -887,9 +882,7 @@ void gen_swap_reg_text(int reg_0, int reg_1, vector<string>& target_text, bool i
         target_text.push_back("pxor\t%" + XMMRegStr[reg_0] + ", %" + XMMRegStr[reg_1]);
     }
     else {
-        string xchg_op = target_is_x64 ? "xchgq\t%" : "xchgl";
-        int gpr_str_idx = target_is_x64 ? 3 : 2;
-        target_text.push_back(xchg_op + GPRStr[reg_0][gpr_str_idx] + ", %" + GPRStr[reg_1][gpr_str_idx]);
+        target_text.push_back("xchgq\t%" + GPRStr[reg_0][3] + ", %" + GPRStr[reg_1][3]);
     }
 }
 
@@ -1121,21 +1114,11 @@ void fetch_gpr_from_array(int quaternion_idx, vector<string>& target_text, char 
         if (base_gpr == -1) {
             base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
 
-            if (target_is_x64){
-                target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
-            }
-            else {
-                target_text.push_back("leal\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][2]);
-            }
+            target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
         }
 
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-        }
-        else {
-            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
 
         gpr_set_mapping(current_quaternion.opr1, base_gpr);
     }
@@ -1144,23 +1127,13 @@ void fetch_gpr_from_array(int quaternion_idx, vector<string>& target_text, char 
         int base_gpr = variable_reg_map[current_quaternion.opr1];
         if (base_gpr == -1) {
             // local array or parameter array which address not store in mem
-            if (target_is_x64) {
-                target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-            }
-            else {
-                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%ebp, %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-            }
+            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+            target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
         }
         else {
             // in register , always be a parameter array
-            if (target_is_x64) {
-                target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-            }
-            else {
-                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_gpr][2]);
-            }
+            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
         }
     }
 
@@ -1190,21 +1163,12 @@ void fetch_xmm_from_array(int quaternion_idx, vector<string>& target_text, char 
         if (base_gpr == -1) {
             base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
 
-            if (target_is_x64){
-                target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
-            }
-            else {
-                target_text.push_back("leal\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][2]);
-            }
+            target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
+
         }
 
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-        }
-        else {
-            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
 
         gpr_set_mapping(current_quaternion.opr1, base_gpr);
     }
@@ -1213,23 +1177,15 @@ void fetch_xmm_from_array(int quaternion_idx, vector<string>& target_text, char 
         int base_gpr = variable_reg_map[current_quaternion.opr1];
         if (base_gpr == -1) {
             // local array or parameter array which address not store in mem
-            if (target_is_x64) {
-                target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-            }
-            else {
-                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%ebp, %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-            }
+            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+            target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
+
         }
         else {
             // in register , always be a parameter array
-            if (target_is_x64) {
-                target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-            }
-            else {
-                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + "), %" + GPRStr[result_xmm][2]);
-            }
+            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
+
         }
         // local array
 
@@ -1266,33 +1222,18 @@ void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char si
         if (base_gpr == -1) {
             base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
 
-            if (target_is_x64){
-                target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
-            }
-            else {
-                target_text.push_back("leal\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][2]);
-            }
+            target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
         }
 
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
-        }
-        else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + ")");
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
 
         gpr_set_mapping(current_quaternion.opr1, base_gpr);
     }
     else {
         // local array
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
-        }
-        else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][2] + ", " + size + ")");
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
@@ -1320,40 +1261,25 @@ void store_xmm_to_array(int quaternion_idx, vector<string>& target_text, char si
         if (base_gpr == -1) {
             base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
 
-            if (target_is_x64){
-                target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
-            }
-            else {
-                target_text.push_back("leal\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][2]);
-            }
+            target_text.push_back("leaq\t" + symbol_table[current_quaternion.opr1].content + ip_str + ", %" + GPRStr[base_gpr][3]);
         }
 
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
-        }
-        else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][2] + ", %" + GPRStr[offset_gpr][2] + ", " + size + ")");
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
 
         gpr_set_mapping(current_quaternion.opr1, base_gpr);
     }
     else {
         // local array
-        if (target_is_x64) {
-            target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
-        }
-        else {
-            target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][2] + ", " + size + ")");
-        }
+        target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
+        target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
     gpr_set_mapping(current_quaternion.result, result_gpr);
 }
 
-void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, int target_arch, BaseBlock& base_block) {
+void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, BaseBlock& base_block) {
     Quaternion &current_quaternion = optimized_sequence[quaternion_idx];
     update_next_use_table(quaternion_idx);
 
@@ -1771,7 +1697,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
         case OP_EQUAL_INT:
         {
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("sete\t%" + GPRStr[result_reg][0]);
 
@@ -1783,7 +1709,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_EQUAL_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             target_text.push_back("sete\t%" + GPRStr[result_reg][0]);
 
@@ -1793,7 +1719,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
         case OP_GREATER_INT:
         {
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("setg\t%" + GPRStr[result_reg][0]);
 
@@ -1805,7 +1731,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_GREATER_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             if (!reverse) {
                 target_text.push_back("seta\t%" + GPRStr[result_reg][0]);
@@ -1819,7 +1745,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_GREATER_EQUAL_INT:{
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("setge\t%" + GPRStr[result_reg][0]);
 
@@ -1831,7 +1757,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_GREATER_EQUAL_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             if (!reverse) {
                 target_text.push_back("setae\t%" + GPRStr[result_reg][0]);
@@ -1845,7 +1771,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_LESS_INT: {
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("setl\t%" + GPRStr[result_reg][0]);
 
@@ -1857,7 +1783,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_LESS_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             if (!reverse) {
                 target_text.push_back("setb\t%" + GPRStr[result_reg][0]);
@@ -1871,7 +1797,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         }
 
         case OP_LESS_EQUAL_INT: {
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("setle\t%" + GPRStr[result_reg][0]);
 
@@ -1883,7 +1809,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_LESS_EQUAL_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             if (!reverse) {
                 target_text.push_back("setbe\t%" + GPRStr[result_reg][0]);
@@ -1898,7 +1824,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
         case OP_NOT_EQUAL_INT:
         {
-            int result_reg = cmp_int_code(quaternion_idx, target_text, target_arch);
+            int result_reg = cmp_int_code(quaternion_idx, target_text);
 
             target_text.push_back("setne\t%" + GPRStr[result_reg][0]);
 
@@ -1910,7 +1836,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_NOT_EQUAL_DOUBLE:
         {
             bool reverse;
-            int result_reg = cmp_float_code(quaternion_idx, target_text, target_arch, reverse);
+            int result_reg = cmp_float_code(quaternion_idx, target_text, reverse);
 
             target_text.push_back("setne\t%" + GPRStr[result_reg][0]);
 
@@ -1953,7 +1879,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
         case OP_PAR: {
             if (opr_is_stored_in_xmm(symbol_table[current_quaternion.opr1])) {
-                if (par_usable_xmm_index >= max_xmm_cnt) { // don't use all regs for passing arguments! ax not used to pass args
+                if (par_usable_xmm_index >= X64XMMCNT) { // don't use all regs for passing arguments! ax not used to pass args
                     // xmm is not enough, stores in memory
                     if (symbol_table[current_quaternion.opr1].is_const) {
                         if (symbol_table[current_quaternion.opr1].data_type == DT_FLOAT) {
@@ -1964,7 +1890,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                         }
                     }
                     else {
-                        target_text.push_back("push" + string(target_arch == TARGET_ARCH_X64 ? "q" : "l") + "\t$" + get_symbol_store_text(current_quaternion.opr1));
+                        target_text.push_back("pushq\t$" + get_symbol_store_text(current_quaternion.opr1));
                     }
                 }
                 else {
@@ -1975,16 +1901,14 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                 }
             }
             else {
-                if (par_usable_gpr_index >= max_gpr_cnt) {
+                if (par_usable_gpr_index >= X64GPRCNT) {
                     // gpr is not enough, stores in memory
                     if (symbol_table[current_quaternion.opr1].is_array && !symbol_table[current_quaternion.opr1].is_temp) {
                         int address_reg = alloc_one_free_gpr(quaternion_idx, target_text);
 
-                        string lea_op = target_is_x64 ? "leaq\t" : "leal\t";
-                        int gpr_str_idx = target_is_x64 ? 3 : 2;
 
-                        target_text.push_back(lea_op + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][gpr_str_idx]);
-                        target_text.push_back("push\t%" + GPRStr[address_reg][gpr_str_idx]);
+                        target_text.push_back("leaq\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
+                        target_text.push_back("push\t%" + GPRStr[address_reg][3]);
 
                         gpr_locked[address_reg] = false;
                     }
@@ -2007,7 +1931,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                                 target_text.push_back("push\t%" + GPRStr[variable_reg_map[current_quaternion.opr1]][2]);
                             }
                             else {
-                                target_text.push_back("push" + string(target_arch == TARGET_ARCH_X64 ? "q" : "l") + "\t$" + get_symbol_store_text(current_quaternion.opr1));
+                                target_text.push_back("pushq\t$" + get_symbol_store_text(current_quaternion.opr1));
                             }
                         }
                     }
@@ -2016,10 +1940,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     if (symbol_table[current_quaternion.opr1].is_array && !symbol_table[current_quaternion.opr1].is_temp) {
                         int address_reg = alloc_one_free_gpr(quaternion_idx, target_text);
 
-                        string lea_op = target_is_x64 ? "leaq\t" : "leal\t";
-                        int gpr_str_idx = target_is_x64 ? 3 : 2;
-
-                        target_text.push_back(lea_op + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][gpr_str_idx]);
+                        target_text.push_back("leaq\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
                         gpr_set_mapping(current_quaternion.opr1, address_reg);
 
                         lock_symbol_to_gpr(current_quaternion.opr1, par_usable_gpr_index, target_text, quaternion_idx, 64);
@@ -2055,7 +1976,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
             par_usable_xmm_index = 1;
 
             // pop all parameter
-            int target_arch_addr_length = target_arch == TARGET_ARCH_X64 ? 8 : 4;
+            int target_arch_addr_length = 8;
             int gpr_para_cnt = 0;
             int xmm_para_cnt = 0;
             for (int para_idx : Function::function_table[current_quaternion.opr1].parameter_index) {
@@ -2066,16 +1987,11 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     ++gpr_para_cnt;
                 }
             }
-            int para_size = target_arch_addr_length * (max(0, xmm_para_cnt - max_xmm_cnt + 1) + max(0, gpr_para_cnt - max_gpr_cnt + 1));
+            int para_size = target_arch_addr_length * (max(0, xmm_para_cnt - X64XMMCNT + 1) + max(0, gpr_para_cnt - X64GPRCNT + 1));
 
 
             if (para_size > 0) {
-                if (target_arch == TARGET_ARCH_X64) {
-                    target_text.push_back("addq\t$" + to_string(para_size) + ", %rsp");
-                }
-                else {
-                    target_text.push_back("addl\t$" + to_string(para_size) + ", %esp");
-                }
+                target_text.push_back("addq\t$" + to_string(para_size) + ", %rsp");
             }
 
             break;
@@ -2361,7 +2277,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
     release_reg(quaternion_idx);
 }
 
-void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text, int target_arch) {
+void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text) {
     variable_reg_map = new int[symbol_table.size()];
     memset(variable_reg_map, -1, symbol_table.size() * sizeof(int));
 
@@ -2378,10 +2294,10 @@ void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text
 
     generate_active_info_table(base_block);
 
-    gen_entry_code(base_block, target_text, target_arch);
+    gen_entry_code(base_block, target_text);
 
     for (int i = base_block.start_index; i <= base_block.end_index; ++i) {
-        generate_quaternion_text(i, target_text, target_arch, base_block);
+        generate_quaternion_text(i, target_text, base_block);
     }
 
     // generate out store instr
@@ -2453,7 +2369,7 @@ void generate_target_bss_asm(vector<string>& target_bss) {
     }
 }
 
-void sp_sub_back_patch(vector<string> &target_text, int target_arch) {
+void sp_sub_back_patch(vector<string> &target_text) {
     int* function_lowest_mem_offset = new int[Function::function_table.size()];
     int target_arch_offset = 0;
     for (int i = 0; i < Function::function_table.size(); ++i) {
@@ -2472,7 +2388,7 @@ void sp_sub_back_patch(vector<string> &target_text, int target_arch) {
 
     for (int i = 0; i < function_leave_correction_points.size(); ++i) {
         if (function_lowest_mem_offset[leave_correction_function_idx[i]] == 0) {
-            target_text[function_leave_correction_points[i]] = target_arch == TARGET_ARCH_X64 ? "pop\t\t%rbp" : "pop\t\t%ebp";
+            target_text[function_leave_correction_points[i]] = "pop\t\t%rbp";
         }
     }
 
@@ -2492,14 +2408,11 @@ void generate_global_info(vector<string> &target_global_info)
     }
 }
 
-void generate_target_asm(string &target_string_str, int target_arch) {
-    ip_str = target_arch == TARGET_ARCH_X64 ? "(%rip)" : "(%eip)";
-    bp_str = target_arch == TARGET_ARCH_X64 ? "(%rbp)" : "(%ebp)";
-    target_is_x64 = target_arch == TARGET_ARCH_X64;
-    max_gpr_cnt = target_arch == TARGET_ARCH_X64 ? X64GPRCNT : X86GPRCNT;
-    max_xmm_cnt = target_arch == TARGET_ARCH_X64 ? 16 : 8;
+void generate_target_asm(string &target_string_str) {
+    ip_str = "(%rip)";
+    bp_str = "(%rbp)";
 
-    init_symbol_table_offset(target_arch);
+    init_symbol_table_offset();
     split_base_blocks(optimized_sequence);
     calculate_active_symbol_sets(false);
     last_calc_symbol = -1;
@@ -2512,10 +2425,10 @@ void generate_target_asm(string &target_string_str, int target_arch) {
     vector<string> text_seg_str;
     text_seg_str.emplace_back(".text");
     for (BaseBlock &base_block: base_blocks) {
-        generate_target_text_asm(base_block, text_seg_str, target_arch);
+        generate_target_text_asm(base_block, text_seg_str);
     }
 
-    sp_sub_back_patch(text_seg_str, target_arch);
+    sp_sub_back_patch(text_seg_str);
 
     vector<string> data_seg_str;
     generate_target_data_asm(data_seg_str);

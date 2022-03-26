@@ -47,20 +47,6 @@ int main(int argc, char* argv[])
                     ++i;
                     break;
 
-                case 'm':
-                    // set target arch
-                    if (argv[i][2] == '3' && argv[i][3] == '2') {
-                        target_arch = TARGET_ARCH_X86;
-                    }
-                    else if (argv[i][2] == '6' && argv[i][3] == '4') {
-                        target_arch = TARGET_ARCH_X64;
-                    }
-                    else {
-                        cerr << "Invalid Target Architecture" << endl;
-                        return -1;
-                    }
-                    break;
-
                 default:
                     cerr << "Invalid Compile Option" << endl;
                     return -1;
@@ -166,7 +152,7 @@ int main(int argc, char* argv[])
 
     // generate target code (x86 asm)
     string target_string_str;
-    generate_target_asm(target_string_str, target_arch);
+    generate_target_asm(target_string_str);
 
     ofstream fout("target.s");
     write_target_code(target_string_str, fout);

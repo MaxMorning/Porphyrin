@@ -21,7 +21,7 @@ print.o : print.c
 	$(CC) -c $^
 
 
-target.asm : test.c
+target.s : test.c
 	cp $(GMM_PATH)g-- ./
 	-./g-- -G ../Grammar/G.txt test.c
 
@@ -34,4 +34,4 @@ test_gcc.o : test.c
 
 .PHONY: clean
 clean :
-	-rm -f *.txt *.asm *.o test g-- test_gcc
+	-rm -f *.txt *.s *.o test g-- test_gcc

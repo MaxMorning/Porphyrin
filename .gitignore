@@ -5,7 +5,7 @@ cmake-build-release/
 .idea/
 .DS_Store
 TestDir/*.txt
-TestDir/*.asm
+TestDir/*.s
 TestDir/*.o
 TestDir/g--
 TestDir/test_gcc
