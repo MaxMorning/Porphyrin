@@ -4,3 +4,7 @@ cmake-build-release/
 
 .idea/
 .DS_Store
+TestDir/*.txt
+TestDir/*.asm
+TestDir/*.o
+TestDir/g--

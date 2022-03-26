@@ -197,7 +197,6 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
         }
 
         variable_reg_map[last_call_return_symbol] = 0;
-        cout << "Last call " << base_block.start_index << "\t" << last_call_return_symbol << endl;
         last_call_return_symbol = -1;
     }
 
@@ -205,7 +204,6 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text, int targ
         Function& function = Function::function_table[i];
         if (base_block.start_index == function.entry_address) {
             // generate entrance code
-            cout << "Hit\t" << base_block.start_index << "\t" << base_block.end_index << endl;
             target_text.push_back('_' + function.name + ':');
 
             target_text.emplace_back("enter $?, $0");
@@ -715,21 +713,11 @@ string get_symbol_store_text(int symbol_index)
                 break;
 
             case DT_FLOAT:
-                if (symbol_table[symbol_index].value.float_value < 0) {
-                    return ".RO_F_NEG_" + to_string(-symbol_table[symbol_index].value.float_value) + ip_str;
-                }
-                else {
-                    return ".RO_F_" + to_string(symbol_table[symbol_index].value.float_value) + ip_str;
-                }
+                return ".RO_F_" + to_string(symbol_index) + ip_str;
                 break;
 
             case DT_DOUBLE:
-                if (symbol_table[symbol_index].value.double_value < 0) {
-                    return ".RO_D_NEG_" + to_string(-symbol_table[symbol_index].value.double_value) + ip_str;
-                }
-                else {
-                    return ".RO_D_" + to_string(symbol_table[symbol_index].value.double_value) + ip_str;
-                }
+                return ".RO_D_" + to_string(symbol_index) + ip_str;
                 break;
 
             default:
@@ -739,7 +727,7 @@ string get_symbol_store_text(int symbol_index)
 
     if (symbol_table[symbol_index].function_index == -1) {
         // is global var
-        return ".GL_" + symbol_table[symbol_index].content + ip_str;
+        return ".GL_" + to_string(symbol_index) + ip_str;
     }
     else {
         if (variable_reg_map[symbol_index] == -1) {
@@ -818,17 +806,17 @@ int cmp_float_code(int quaternion_idx, vector<string>& target_text, int target_a
     if (variable_reg_map[current_quaternion.opr1] != -1) {
         if (variable_reg_map[current_quaternion.opr2] != -1) {
             // two opr is in xmm
-            target_text.push_back(comp_str + "%" + XMMRegStr[current_quaternion.opr2] + ", %" + XMMRegStr[current_quaternion.opr1]);
+            target_text.push_back(comp_str + "%" + XMMRegStr[variable_reg_map[current_quaternion.opr2]] + ", %" + XMMRegStr[variable_reg_map[current_quaternion.opr1]]);
         }
         else {
             // opr1 in xmm, opr2 in mem
-            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr2) + ", %" + XMMRegStr[current_quaternion.opr1]);
+            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr2) + ", %" + XMMRegStr[variable_reg_map[current_quaternion.opr1]]);
         }
     }
     else {
         if (variable_reg_map[current_quaternion.opr2] != -1) {
             // opr1 in mem, opr2 in xmm
-            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[current_quaternion.opr2]);
+            target_text.push_back(comp_str + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[variable_reg_map[current_quaternion.opr2]]);
             reverse = true;
         }
         else {
@@ -867,7 +855,6 @@ void gen_swap_reg_text(int reg_0, int reg_1, vector<string>& target_text, bool i
 
 void lock_symbol_to_gpr(int symbol_idx, int target_reg, vector<string>& target_text, int quaternion_idx)
 {
-    cout << "LOCK " << variable_reg_map[symbol_idx] << '\t' << target_reg << endl;
     // symbol already in target reg
     if (variable_reg_map[symbol_idx] != target_reg) {
         if (gpr_variable_map[target_reg].empty()) {
@@ -1342,18 +1329,8 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                             target_text.push_back("xorps\t%" + XMMRegStr[alloc_reg_index] + ", %" +
                                                   XMMRegStr[alloc_reg_index]); // xor to optimize
                         } else {
-                            if (symbol_table[current_quaternion.opr1].value.float_value < 0) {
-                                target_text.push_back(
-                                        "movss\t.RO_F_NEG_" + to_string(-symbol_table[current_quaternion.opr1].value.float_value) +
-                                        ip_str + ", %" +
-                                        XMMRegStr[alloc_reg_index]);
-                            }
-                            else {
-                                target_text.push_back(
-                                        "movss\t.RO_F_" + to_string(symbol_table[current_quaternion.opr1].value.float_value) +
-                                        ip_str + ", %" +
-                                        XMMRegStr[alloc_reg_index]);
-                            }
+                            target_text.push_back(
+                                    "movss\t.RO_F_" + to_string(current_quaternion.opr1) + ip_str + ", %" + XMMRegStr[alloc_reg_index]);
 
                         }
 
@@ -1368,18 +1345,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                             target_text.push_back("xorpd\t%" + XMMRegStr[alloc_reg_index] + ", %" +
                                                   XMMRegStr[alloc_reg_index]); // xor to optimize
                         } else {
-                            if (symbol_table[current_quaternion.opr1].value.double_value < 0) {
-                                target_text.push_back("movsd\t.RO_D_NEG_" +
-                                                      to_string(-symbol_table[current_quaternion.opr1].value.double_value) +
-                                                      ip_str + ", %" +
-                                                      XMMRegStr[alloc_reg_index]);
-                            }
-                            else {
-                                target_text.push_back("movsd\t.RO_D_" +
-                                                      to_string(symbol_table[current_quaternion.opr1].value.double_value) +
-                                                      ip_str + ", %" +
-                                                      XMMRegStr[alloc_reg_index]);
-                            }
+                            target_text.push_back("movsd\t.RO_D_" + to_string(current_quaternion.opr1) + ip_str + ", %" + XMMRegStr[alloc_reg_index]);
 
                         }
 
@@ -1571,13 +1537,8 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_LOGIC_OR:
         case OP_LOGIC_AND:
         case OP_LOGIC_NOT:
+        case OP_JEQ:
         {
-            break;
-        }
-
-        case OP_JEQ: {
-            throw "You need implement jeq instr now!!";
-
             break;
         }
 
@@ -1609,7 +1570,6 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                 optimized_sequence[quaternion_idx - 1].op_code >= OP_EQUAL_INT && optimized_sequence[quaternion_idx - 1].op_code <= OP_NOT_EQUAL_DOUBLE) {
                 assert(target_text[prev_set_instr_like_point].substr(0, 3) == "set");
 
-                cout << "Optimize " << quaternion_idx << " Hit" << endl;
                 target_text[prev_set_instr_like_point] = "";
 
                 // optimize jz
@@ -1638,24 +1598,37 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
                     switch (symbol_table[current_quaternion.opr1].data_type) {
                         case DT_BOOL:
                             test_str = "testb\t$(-1), ";
+                            target_text.push_back(test_str + get_symbol_store_text(current_quaternion.opr1));
                             break;
 
                         case DT_INT:
                             test_str = "testl\t$(-1), ";
+                            target_text.push_back(test_str + get_symbol_store_text(current_quaternion.opr1));
                             break;
 
                         case DT_FLOAT:
-                            test_str = "testl\t$(-1), ";
+                        {
+                            int zero_xmm = alloc_one_free_xmm(quaternion_idx, target_text);
+                            target_text.push_back("xorps\t%" + XMMRegStr[zero_xmm] + ", %" + XMMRegStr[zero_xmm]);
+                            target_text.push_back("ucomiss\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[zero_xmm]);
+
+                            xmm_locked[zero_xmm] = false;
                             break;
+                        }
 
                         case DT_DOUBLE:
-                            test_str = "testq\t$(-1), ";
+                        {
+                            int zero_xmm = alloc_one_free_xmm(quaternion_idx, target_text);
+                            target_text.push_back("xorps\t%" + XMMRegStr[zero_xmm] + ", %" + XMMRegStr[zero_xmm]);
+                            target_text.push_back("ucomisd\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + XMMRegStr[zero_xmm]);
+
+                            xmm_locked[zero_xmm] = false;
                             break;
+                        }
 
                         default:
                             break;
                     }
-                    target_text.push_back(test_str + get_symbol_store_text(current_quaternion.opr1));
                     last_calc_symbol = current_quaternion.opr1;
                 }
 
@@ -1683,7 +1656,6 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
         case OP_JMP: {
             // save out set variables
             for (int out_sym : base_block.out_set) {
-                cout << base_block.start_index << "\tOutSym\t" << out_sym << "\tReg\t" << variable_reg_map[out_sym] << endl;
                 if (variable_reg_map[out_sym] != -1) {
                     // stores in reg, need write back
                     generate_store(variable_reg_map[out_sym], out_sym, target_text);
@@ -2271,26 +2243,12 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, i
 
                         case DT_FLOAT:
                             // use xmm0 to pass return value
-                            if (symbol_table[current_quaternion.opr1].value.float_value < 0) {
-                                target_text.push_back("movss\t.RO_F_NEG_" + to_string(
-                                        -symbol_table[current_quaternion.opr1].value.float_value) + ip_str + ", %xmm0");
-                            }
-                            else {
-                                target_text.push_back("movss\t.RO_F_" + to_string(
-                                        symbol_table[current_quaternion.opr1].value.float_value) + ip_str + ", %xmm0");
-                            }
+                            target_text.push_back("movss\t.RO_F_" + to_string(current_quaternion.opr1) + ip_str + ", %xmm0");
                             break;
 
                         case DT_DOUBLE:
                             // use xmm0 to pass return value
-                            if (symbol_table[current_quaternion.opr1].value.double_value < 0) {
-                                target_text.push_back("movsd\t.RO_D_NEG_" + to_string(
-                                        -symbol_table[current_quaternion.opr1].value.double_value) + ip_str + ", %xmm0");
-                            }
-                            else {
-                                target_text.push_back("movsd\t.RO_D_" + to_string(
-                                        symbol_table[current_quaternion.opr1].value.double_value) + ip_str + ", %xmm0");
-                            }
+                            target_text.push_back("movsd\t.RO_D_" + to_string(current_quaternion.opr1) + ip_str + ", %xmm0");
                             break;
 
                         default:
@@ -2384,45 +2342,34 @@ void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text
 void generate_target_data_asm(vector<string>& target_data) {
     target_data.emplace_back(".data");
 
-    for (SymbolEntry& symbol : symbol_table) {
+    for (int i = 0; i < symbol_table.size(); ++i) {
+        SymbolEntry& symbol = symbol_table[i];
+
         if (symbol.is_const) {
             if (symbol.data_type == DT_FLOAT) {
-                if (symbol.value.float_value < 0) {
-                    target_data.push_back(".RO_F_NEG_" + to_string(-symbol.value.float_value) + ":\t.float\t" + to_string(symbol.value.float_value));
-                }
-                else {
-                    target_data.push_back(".RO_F_" + to_string(symbol.value.float_value) + ":\t.float\t" +
-                                          to_string(symbol.value.float_value));
-                }
+                target_data.push_back(".RO_F_" + to_string(i) + ":\t.float\t" + to_string(symbol.value.float_value));
             }
             else if (symbol.data_type == DT_DOUBLE) {
-                if (symbol.value.double_value < 0) {
-                    target_data.push_back(".RO_D_NEG_" + to_string(-symbol.value.double_value) + ":\t.double\t" +
-                                          to_string(symbol.value.double_value));
-                }
-                else {
-                    target_data.push_back(".RO_D_" + to_string(symbol.value.double_value) + ":\t.double\t" +
-                                          to_string(symbol.value.double_value));
-                }
+                target_data.push_back(".RO_D_" + to_string(i) + ":\t.double\t" + to_string(symbol.value.double_value));
             }
         }
         else if (symbol.function_index == -1 && !symbol.is_array) {
             // global symbol
             switch (symbol.data_type) {
                 case DT_BOOL:
-                    target_data.push_back(".GL_" + symbol.content + ":\t.bool\t" + (symbol.value.bool_value ? '1' : '0'));
+                    target_data.push_back(".GL_" + to_string(i) + ":\t.bool\t" + (symbol.value.bool_value ? '1' : '0'));
                     break;
 
                 case DT_INT:
-                    target_data.push_back(".GL_" + symbol.content + ":\t.int\t" + to_string(symbol.value.int_value));
+                    target_data.push_back(".GL_" + to_string(i) + ":\t.int\t" + to_string(symbol.value.int_value));
                     break;
 
                 case DT_FLOAT:
-                    target_data.push_back(".GL_" + symbol.content + ":\t.float\t" + to_string(symbol.value.float_value));
+                    target_data.push_back(".GL_" + to_string(i) + ":\t.float\t" + to_string(symbol.value.float_value));
                     break;
 
                 case DT_DOUBLE:
-                    target_data.push_back(".GL_" + symbol.content + ":\t.double\t" + to_string(symbol.value.double_value));
+                    target_data.push_back(".GL_" + to_string(i) + ":\t.double\t" + to_string(symbol.value.double_value));
                     break;
 
                 default:
@@ -2451,12 +2398,8 @@ void sp_sub_back_patch(vector<string> &target_text, int target_arch) {
     }
 
     for (SymbolEntry& symbol : symbol_table) {
-        if (symbol.memory_offset != INVALID_MEMORY_OFFSET) {
-            cout << "UUU" << symbol.memory_offset << endl;
-        }
         if (symbol.memory_offset != INVALID_MEMORY_OFFSET && symbol.function_index >= 0 && function_lowest_mem_offset[symbol.function_index] > (symbol.memory_offset)) {
             function_lowest_mem_offset[symbol.function_index] = symbol.memory_offset;
-            cout << "Update " << symbol.memory_offset << endl;
         }
     }
 

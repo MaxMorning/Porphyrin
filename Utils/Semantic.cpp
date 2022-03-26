@@ -494,7 +494,6 @@ int create_new_symbol(Node* id_ptr, DATA_TYPE_ENUM data_type, bool is_const)
     // add new var
     SymbolEntry new_symbol;
     new_symbol.content = id_ptr->content;
-    cout << id_ptr->content << " Content" << endl;
     new_symbol.is_temp = false;
     new_symbol.is_const = is_const;
     new_symbol.is_array = false;

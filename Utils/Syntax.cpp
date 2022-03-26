@@ -513,7 +513,6 @@ bool generate_lr1_table()
 
 bool syntax_analysis(string processed_code, Node*& root)
 {
-    cout << "Length : " << processed_code.size() << endl;
     // assume the entrance of DFA is Closure 0, of which index is 0
     int current_state = 0;
 //    int ana_index = 0;
