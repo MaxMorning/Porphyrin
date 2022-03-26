@@ -9,6 +9,7 @@
 
 
 #include "Include/Optimize.h"
+#include <cassert>
 
 #define IS_NOT_BRANCH_IR -5
 const int MAX_INT = 2147483647;
@@ -52,18 +53,21 @@ int search_base_block(int entrance_index)
     return -1;
 }
 
-void split_base_blocks(vector<Quaternion> quaternion_sequence)
+void split_base_blocks(vector<Quaternion>& quaternion_sequence)
 {
     base_blocks.clear();
-    bool* is_base_block_entry_array = new bool[quaternion_sequence.size()];
-    memset(is_base_block_entry_array, 0, quaternion_sequence.size() * sizeof(bool));
+    bool* is_base_block_entry_array = new bool[quaternion_sequence.size() + 1];
+    memset(is_base_block_entry_array, 0, (quaternion_sequence.size() + 1) * sizeof(bool));
 
     // first instr is always the entrance of a base block
     is_base_block_entry_array[0] = true;
 
     for (int i = 0; i < quaternion_sequence.size(); ++i) {
         int reachable_dst = is_branch_IR(quaternion_sequence[i], i);
-        if (reachable_dst != IS_NOT_BRANCH_IR) {
+        if (reachable_dst == -1) {
+            is_base_block_entry_array[i + 1] = true;
+        }
+        else if (reachable_dst != IS_NOT_BRANCH_IR) {
             // is a branch IR
             is_base_block_entry_array[i + 1] = true;
             is_base_block_entry_array[reachable_dst] = true;
@@ -351,11 +355,18 @@ void dual_opr_instr_generate_node(Quaternion& quaternion, bool can_swap)
 
 void calculate_use_def_sets()
 {
-    bool symbol_status[symbol_table.size()][2]; // 0 - use ; 1 - def
-
+    bool** symbol_status = new bool*[symbol_table.size()]; // 0 - use ; 1 - def
+    for (int i = 0; i < symbol_table.size(); ++i) {
+        symbol_status[i] = new bool[2];
+    }
 
     for (BaseBlock& base_block : base_blocks) {
-        memset(symbol_status, 0, symbol_table.size() * 2 * sizeof(bool));
+
+        for (int i = 0; i < symbol_table.size(); ++i) {
+            symbol_status[i][0] = false;
+            symbol_status[i][1] = false;
+        }
+
         unordered_set<int> temp_use_set;
         unordered_set<int> temp_def_set;
         for (int quat_index = base_block.start_index; quat_index <= base_block.end_index; ++quat_index) {
@@ -499,6 +510,11 @@ void calculate_use_def_sets()
             }
         }
     }
+
+    for (int i = 0; i < symbol_table.size(); ++i) {
+        delete[] symbol_status[i];
+    }
+    delete[] symbol_status;
 }
 
 void calculate_active_symbol_sets(bool need_process_call_par)

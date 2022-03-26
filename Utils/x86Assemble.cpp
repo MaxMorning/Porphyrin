@@ -9,6 +9,7 @@
 
 #include "Include/x86Assemble.h"
 #include "Include/Optimize.h"
+#include <cassert>
 
 #define INVALID_MEMORY_OFFSET 2147483647
 

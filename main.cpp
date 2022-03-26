@@ -59,6 +59,8 @@ int main(int argc, char* argv[])
                         cerr << "Invalid Target Architecture" << endl;
                         return -1;
                     }
+                    break;
+
                 default:
                     cerr << "Invalid Compile Option" << endl;
                     return -1;
@@ -166,7 +168,7 @@ int main(int argc, char* argv[])
     string target_string_str;
     generate_target_asm(target_string_str, target_arch);
 
-    ofstream fout("target.asm");
+    ofstream fout("target.s");
     write_target_code(target_string_str, fout);
 
     cout << "Acc!" << endl;

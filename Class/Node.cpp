@@ -9,6 +9,7 @@
 
 #include "Node.h"
 #include <queue>
+#include <cassert>
 
 ofstream Node::fout;
 

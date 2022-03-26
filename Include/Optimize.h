@@ -55,7 +55,7 @@ struct DAGNode {
 
 extern vector<BaseBlock> base_blocks;
 
-void split_base_blocks(vector<Quaternion> quaternion_sequence);
+void split_base_blocks(vector<Quaternion>& quaternion_sequence);
 void calculate_active_symbol_sets(bool need_process_call_par);
 
 extern vector<Quaternion> optimized_sequence;

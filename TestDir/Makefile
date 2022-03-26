@@ -13,7 +13,7 @@ test : test.o print.o
 	$(CC) -o $@ $^
 
 
-test.o : target.asm
+test.o : target.s
 	as -o $@ $^
 
 

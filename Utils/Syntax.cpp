@@ -1,4 +1,4 @@
-//
+﻿//
 // Project: Porphyrin
 // File Name: Syntax.cpp.c
 // Author: Morning
