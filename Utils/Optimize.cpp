@@ -10,6 +10,7 @@
 
 #include "Include/Optimize.h"
 #include <cassert>
+#include <algorithm>
 
 #define IS_NOT_BRANCH_IR -5
 const int MAX_INT = 2147483647;
@@ -683,6 +684,16 @@ void print_dag_nodes()
 
     cout << endl;
 }
+
+struct OutSymbolSortUnit {
+    int out_symbol_index;
+    int dag_idx;
+
+    bool operator<(OutSymbolSortUnit& opr2) const
+    {
+        return this->dag_idx < opr2.dag_idx;
+    }
+};
 
 void optimize_base_block(BaseBlock& base_block)
 {
@@ -1518,7 +1529,8 @@ void optimize_base_block(BaseBlock& base_block)
     print_dag_nodes();
 #endif
 
-    // generate quaternion sequence
+    // sort out active symbol
+    vector<OutSymbolSortUnit> out_symbol_sort_list;
     for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1) {
             // check if this variable is const and generate assign instr
@@ -1537,9 +1549,38 @@ void optimize_base_block(BaseBlock& base_block)
                     base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
                 }
             }
-            generate_quaternions(*dag_nodes[variable_dag_node_map[out_active_symbol]], base_block.block_quaternion_sequence);
+            out_symbol_sort_list.push_back({out_active_symbol, variable_dag_node_map[out_active_symbol]});
         }
     }
+
+    sort(out_symbol_sort_list.begin(), out_symbol_sort_list.end());
+
+    // generate quaternion sequence
+    for (OutSymbolSortUnit& out_symbol_unit : out_symbol_sort_list) {
+        generate_quaternions(*dag_nodes[out_symbol_unit.dag_idx], base_block.block_quaternion_sequence);
+    }
+
+//    for (int out_active_symbol : base_block.out_set) {
+//        if (variable_dag_node_map[out_active_symbol] != -1) {
+//            // check if this variable is const and generate assign instr
+//            if (dag_nodes[variable_dag_node_map[out_active_symbol]]->op == OP_INVALID) {
+//                // get a const value == this variable
+//                int value_temp_var = -1;
+//
+//                for (int symbol_index : dag_nodes[variable_dag_node_map[out_active_symbol]]->represent_variables) {
+//                    if (symbol_table[symbol_index].is_const || (base_block.in_set.find(symbol_index) != base_block.in_set.end())) {
+//                        value_temp_var = symbol_index;
+//                        break;
+//                    }
+//                }
+//
+//                if (value_temp_var >= 0 && value_temp_var != out_active_symbol) {
+//                    base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
+//                }
+//            }
+//            generate_quaternions(*dag_nodes[variable_dag_node_map[out_active_symbol]], base_block.block_quaternion_sequence);
+//        }
+//    }
 
 //    // generate array store
 //    for (int array_store_dag_idx : base_block.array_store_dags) {

@@ -33,7 +33,7 @@ float to_float(int i)
     return i;
 }
 
-double calc_pi()
+double gmm_main()
 {
     int i = 1;
     double sum = 0;

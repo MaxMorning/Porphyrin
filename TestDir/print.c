@@ -8,12 +8,21 @@
 //
 
 #include <stdio.h>
+#include <time.h>
 
-double calc_pi();
+double gmm_main();
 
 int main()
 {
-    printf("%.16lf\n", calc_pi());
+    clock_t start_time = clock();
+
+    double result = gmm_main();
+
+    clock_t end_time = clock();
+
+    printf("Result : %.16lf\n", result);
+
+    printf("Time : %ld", (end_time - start_time));
 
     return 0;
 }
