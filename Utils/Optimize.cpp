@@ -685,16 +685,6 @@ void print_dag_nodes()
     cout << endl;
 }
 
-struct OutSymbolSortUnit {
-    int out_symbol_index;
-    int dag_idx;
-
-    bool operator<(OutSymbolSortUnit& opr2) const
-    {
-        return this->dag_idx < opr2.dag_idx;
-    }
-};
-
 void optimize_base_block(BaseBlock& base_block)
 {
     if (!base_block.is_reachable) {
@@ -1530,7 +1520,7 @@ void optimize_base_block(BaseBlock& base_block)
 #endif
 
     // sort out active symbol
-    vector<OutSymbolSortUnit> out_symbol_sort_list;
+    vector<int> out_symbol_sort_list;
     for (int out_active_symbol : base_block.out_set) {
         if (variable_dag_node_map[out_active_symbol] != -1) {
             // check if this variable is const and generate assign instr
@@ -1549,15 +1539,15 @@ void optimize_base_block(BaseBlock& base_block)
                     base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
                 }
             }
-            out_symbol_sort_list.push_back({out_active_symbol, variable_dag_node_map[out_active_symbol]});
+            out_symbol_sort_list.push_back(variable_dag_node_map[out_active_symbol]);
         }
     }
 
     sort(out_symbol_sort_list.begin(), out_symbol_sort_list.end());
 
     // generate quaternion sequence
-    for (OutSymbolSortUnit& out_symbol_unit : out_symbol_sort_list) {
-        generate_quaternions(*dag_nodes[out_symbol_unit.dag_idx], base_block.block_quaternion_sequence);
+    for (int& out_symbol_idx : out_symbol_sort_list) {
+        generate_quaternions(*dag_nodes[out_symbol_idx], base_block.block_quaternion_sequence);
     }
 
 //    for (int out_active_symbol : base_block.out_set) {
