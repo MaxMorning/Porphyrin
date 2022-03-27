@@ -73,14 +73,16 @@ void Diagnose::printWarning(int error_idx, string information)
     warning_stream << "^\n";
 }
 
-void Diagnose::printStream()
+void Diagnose::printStream(bool enable_print)
 {
     string warning_string = warning_stream.str();
     cout << warning_string << endl;
 
-    ofstream fout("Warning.txt");
-    fout << warning_string << endl;
-    fout.close();
+    if (enable_print) {
+        ofstream fout("Warning.txt");
+        fout << warning_string << endl;
+        fout.close();
+    }
 }
 
 void Diagnose::setSource(string& origin_code)

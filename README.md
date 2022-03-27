@@ -1,6 +1,22 @@
 # Porphyrin
 A C-like language compiler
 
+## Compile Options
+```
+[optional]          -twin               设定汇编代码风格为Windows(函数名前无下划线_)
+                    -o targetfile       设定目标文件
+[optional]          -p                  存储中间结果到硬盘
+                                            符号表（语法分析结果）
+                                            函数表（语法分析结果）
+                                            语法树可视化分布
+                                            语义分析结果四元式
+                                            警告信息
+                                            错误信息
+                                            优化结果四元式
+                                            优化DAG可视化分布
+                                            执行阶段
+```
+
 ## nonterminal Sequence
     Source
     Declarations

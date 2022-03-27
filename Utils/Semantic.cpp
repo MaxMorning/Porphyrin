@@ -86,20 +86,10 @@ int Node::semantic_action_one_pass(int* child_return_value)
     return ret;
 }
 
-void semantic_analysis(Node* root)
-{
-    for (Nonterminal& nonterminal : Nonterminal::all_nonterminal_chars) {
-        cout << nonterminal.token << endl;
-    }
-    root->semantic_action();
-    check_unused();
-    Diagnose::printStream();
-}
-
-void semantic_analysis_post()
+void semantic_analysis_post(bool enable_print)
 {
     check_unused();
-    Diagnose::printStream();
+    Diagnose::printStream(enable_print);
 }
 
 void check_unused()

@@ -195,9 +195,7 @@ struct StackEntry {
 extern int current_layer;
 extern vector<StackEntry> analyse_symbol_stack;
 
-void semantic_analysis(Node* root);
-
-void semantic_analysis_post();
+void semantic_analysis_post(bool enable_print);
 
 void check_unused();
 

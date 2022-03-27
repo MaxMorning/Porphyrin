@@ -23,7 +23,7 @@ public:
     static void printWarning(int error_idx, string information);
     static void setSource(string& origin_code);
     static void setProcessed(string& code);
-    static void printStream();
+    static void printStream(bool enable_print);
 
 private:
     static string source_code;

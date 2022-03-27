@@ -10,3 +10,4 @@ TestDir/*.o
 TestDir/g--
 TestDir/test_gcc
 TestDir/test
+TestDir/*.exe

@@ -1,0 +1,37 @@
+GMM_PATH := ..\\cmake-build-release\\
+CC := gcc
+
+.PHONY: run_gmm
+run_gmm : test.exe
+	test
+
+.PHONY: run_gcc
+run_gcc : test_gcc.exe
+	test_gcc
+
+test.exe : test.o print.o
+	$(CC) -o $@ $^
+
+
+test.o : target.s
+	as -o $@ $^
+
+
+print.o : print.c
+	$(CC) -c $^
+
+
+target.s : test.c
+	copy $(GMM_PATH)g--.exe .\\
+	g-- -twin test.c -o target.s
+
+
+test_gcc.exe : test_gcc.o print.o
+	$(CC) -o $@ $^
+
+test_gcc.o : test.c
+	$(CC) -o $@ -c $^
+
+.PHONY: clean
+clean :
+	-del *.txt *.s *.o *.exe

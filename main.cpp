@@ -25,26 +25,41 @@ using namespace std;
 int main(int argc, char* argv[])
 {
     char* source_code_path = nullptr;
-    int target_arch = TARGET_ARCH_X64;
 
-    string grammar_path = "../Grammar/grammar_test.txt";
+    string grammar_path = "../Grammar/G.txt";
+    string target_path;
+    bool enable_print = false;
+    bool gen_win_style_asm = false;
+
     // process compile options
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             if (argv[i][1] == '\0') {
-                cerr << "Invalid Compile Option" << endl;
-                return -1;
-            }
-            if (i + 1 >= argc) {
-                cerr << "No matching parameter" << endl;
+                cerr << "Invalid Compile Option." << endl;
                 return -1;
             }
             switch (argv[i][1]) {
-                case 'g':
-                case 'G':
-                    // set Grammar file
-                    grammar_path = argv[i + 1];
+                case 'o':
+                    if (i + 1 >= argc) {
+                        cerr << "No matching parameter" << endl;
+                        return -1;
+                    }
+                    // set target file
+                    target_path = argv[i + 1];
                     ++i;
+                    break;
+
+                case 'p':
+                    enable_print = true;
+                    break;
+
+                case 't':
+                    if (argv[i][2] == 'w' && argv[i][3] == 'i' && argv[i][4] == 'n' && argv[i][5] == '\0') {
+                        gen_win_style_asm = true;
+                    }
+                    else {
+                        cerr << "Invalid Target Platform." << endl;
+                    }
                     break;
 
                 default:
@@ -123,16 +138,17 @@ int main(int argc, char* argv[])
 
 
     // visualize part
-    root->setLayout(0);
-    root->printTreeInfoIntoTxt("Layout.txt");
+    if (enable_print) {
+        root->setLayout(0);
+        root->printTreeInfoIntoTxt("Layout.txt");
+    }
 
 #ifdef DEBUG
     root->print_tree();
 #endif
 
     // Semantic part
-//    semantic_analysis(root);
-    semantic_analysis_post();
+    semantic_analysis_post(enable_print);
 
 #ifdef SEMANTIC_DEBUG
     print_quaternion_sequence(quaternion_sequence);
@@ -148,13 +164,14 @@ int main(int argc, char* argv[])
     print_optimize_sequence();
 #endif
 
-    write_optimize_result();
-
+    if (enable_print) {
+        write_optimize_result();
+    }
     // generate target code (x86 asm)
     string target_string_str;
-    generate_target_asm(target_string_str);
+    generate_target_asm(target_string_str, gen_win_style_asm);
 
-    ofstream fout("target.s");
+    ofstream fout(target_path);
     write_target_code(target_string_str, fout);
 
     cout << "Acc!" << endl;

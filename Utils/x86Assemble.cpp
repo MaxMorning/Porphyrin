@@ -28,6 +28,8 @@
 string ip_str;
 string bp_str;
 
+string function_name_prefix;
+
 const unordered_map<string, string> condition_negative_map = {
         {"ne", "e"},
         {"e", "ne"},
@@ -200,7 +202,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
         Function& function = Function::function_table[i];
         if (base_block.start_index == function.entry_address) {
             // generate entrance code
-            target_text.push_back('_' + function.name + ':');
+            target_text.push_back(function_name_prefix + function.name + ':');
 
             target_text.emplace_back("enter $?, $0");
 
@@ -1966,7 +1968,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
                 }
             }
 
-            target_text.push_back("call\t_" + Function::function_table[current_quaternion.opr1].name);
+            target_text.push_back("call\t" + function_name_prefix + Function::function_table[current_quaternion.opr1].name);
             last_call_return_symbol = current_quaternion.result;
 
             // unlock all registers
@@ -2398,7 +2400,7 @@ void sp_sub_back_patch(vector<string> &target_text) {
 void generate_global_info(vector<string> &target_global_info)
 {
     for (Function& function : Function::function_table) {
-        target_global_info.push_back(".global _" + function.name);
+        target_global_info.push_back(".global " + function_name_prefix + function.name);
     }
 
     for (SymbolEntry& symbol : symbol_table) {
@@ -2408,9 +2410,16 @@ void generate_global_info(vector<string> &target_global_info)
     }
 }
 
-void generate_target_asm(string &target_string_str) {
+void generate_target_asm(string &target_string_str, bool gen_win_style_asm) {
     ip_str = "(%rip)";
     bp_str = "(%rbp)";
+
+    if (gen_win_style_asm) {
+        function_name_prefix = "";
+    }
+    else {
+        function_name_prefix = "_";
+    }
 
     init_symbol_table_offset();
     split_base_blocks(optimized_sequence);
