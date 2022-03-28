@@ -40,6 +40,8 @@ int main()
     g_a[4] = 4;
     g_a[6] = 3;
 
+    int a, b, c, d;
+
     float ff = g_a[3];
     ff = ff + func(ff + g_a[6]);
     int i = ff / 2;

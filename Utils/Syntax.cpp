@@ -22,7 +22,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_map>
-#include <assert.h>
+#include <cassert>
 #include "Include/Semantic.h"
 
 using namespace std;
@@ -132,6 +132,231 @@ void load_grammar_from_disk(const string& path)
     }
     cout << endl;
 #endif
+}
+
+string built_in_grammar = "Source @ Declarations\n"
+                          "\n"
+                          "Declarations @ Declarations Declaration\n"
+                          "Declarations @ Declaration\n"
+                          "\n"
+                          "Declaration @ VarDeclaration\n"
+                          "Declaration @ FunDeclaration\n"
+                          "\n"
+                          "Const @ const\n"
+                          "VarDeclaration @ Type DeclaredVars ;\n"
+                          "VarDeclaration @ Const Type DeclaredVars ;\n"
+                          "\n"
+                          "DeclaredVars @ DeclaredVar , DeclaredVars\n"
+                          "DeclaredVars @ DeclaredVar\n"
+                          "\n"
+                          "DeclaredVar @ id\n"
+                          "DeclaredVar @ id DecIndices\n"
+                          "DeclaredVar @ id = Expr\n"
+                          "\n"
+                          "VariableUse @ id\n"
+                          "VariableUse @ id UseIndices\n"
+                          "\n"
+                          "UseIndices @ [ Expr ] UseIndices\n"
+                          "UseIndices @ [ Expr ]\n"
+                          "\n"
+                          "DecIndices @ [ Expr ] DecIndices\n"
+                          "DecIndices @ [ Expr ]\n"
+                          "\n"
+                          "FunDeclaration @ Type IdLeftBrace HereIsParameter ) Compound\n"
+                          "FunDeclaration @ Type IdLeftBrace ) Compound\n"
+                          "IdLeftBrace @ id (\n"
+                          "\n"
+                          "Type @ int\n"
+                          "Type @ float\n"
+                          "Type @ double\n"
+                          "Type @ void\n"
+                          "Type @ bool\n"
+                          "\n"
+                          "HereIsParameter @ void\n"
+                          "HereIsParameter @ Parameters\n"
+                          "\n"
+                          "Parameters @ Parameter , Parameters\n"
+                          "Parameters @ Parameter\n"
+                          "\n"
+                          "Parameter @ Type id\n"
+                          "Parameter @ Type id DecIndices\n"
+                          "\n"
+                          "\n"
+                          "\n"
+                          "Statements @ Statement Statements\n"
+                          "Statements @ Statement\n"
+                          "\n"
+                          "Statement @ VarDeclaration\n"
+                          "Statement @ Expression\n"
+                          "Statement @ If\n"
+                          "Statement @ While\n"
+                          "Statement @ Return\n"
+                          "Statement @ Compound\n"
+                          "Statement @ ;\n"
+                          "\n"
+                          "Expression @ Expr ;\n"
+                          "\n"
+                          "If @ IfSymbol ( Expr RightBraceSetIfWhile Statement\n"
+                          "If @ IfSymbol ( Expr RightBraceSetIfWhile Statement else Statement\n"
+                          "\n"
+                          "RightBraceSetIfWhile @ )\n"
+                          "\n"
+                          "IfSymbol @ if\n"
+                          "\n"
+                          "While @ WhileSymbol ( Expr RightBraceSetIfWhile Statement\n"
+                          "WhileSymbol @ while\n"
+                          "\n"
+                          "Return @ return Expr ;\n"
+                          "Return @ return ;\n"
+                          "\n"
+                          "Compound @ { }\n"
+                          "Compound @ LeftCurlyBraceFore Statements }\n"
+                          "LeftCurlyBraceFore @ {\n"
+                          "\n"
+                          "\n"
+                          "\n"
+                          "Expr @ Comma\n"
+                          "\n"
+                          "Comma @ Comma , Assignment\n"
+                          "Comma @ Assignment\n"
+                          "\n"
+                          "Assignment @ LogicalOr = Assignment\n"
+                          "Assignment @ LogicalOr\n"
+                          "\n"
+                          "LogicalOr @ LogicalOr || LogicalAnd\n"
+                          "LogicalOr @ LogicalAnd\n"
+                          "\n"
+                          "LogicalAnd @ LogicalAnd && Comparison\n"
+                          "LogicalAnd @ Comparison\n"
+                          "\n"
+                          "Comparison @ Comparison CmpSymbol Addition\n"
+                          "Comparison @ Addition\n"
+                          "\n"
+                          "CmpSymbol @ ==\n"
+                          "CmpSymbol @ >\n"
+                          "CmpSymbol @ >=\n"
+                          "CmpSymbol @ <\n"
+                          "CmpSymbol @ <=\n"
+                          "CmpSymbol @ !=\n"
+                          "\n"
+                          "Addition @ Addition AddSymbol Multiplication\n"
+                          "Addition @ Multiplication\n"
+                          "\n"
+                          "AddSymbol @ +\n"
+                          "AddSymbol @ -\n"
+                          "\n"
+                          "Multiplication @ Multiplication MulSymbol Item\n"
+                          "Multiplication @ Item\n"
+                          "\n"
+                          "MulSymbol @ *\n"
+                          "MulSymbol @ /\n"
+                          "\n"
+                          "Item @ ! Item\n"
+                          "Item @ - Item\n"
+                          "Item @ ( Expr )\n"
+                          "Item @ VariableUse\n"
+                          "Item @ Call\n"
+                          "Item @ Num\n"
+                          "\n"
+                          "Call @ id ( HereIsArgument )\n"
+                          "Call @ id ( )\n"
+                          "\n"
+                          "HereIsArgument @ void\n"
+                          "HereIsArgument @ Arguments\n"
+                          "\n"
+                          "Arguments @ Argument , Arguments\n"
+                          "Arguments @ Argument\n"
+                          "\n"
+                          "Argument @ Expr\n"
+                          "\n"
+                          "Num @ num\n"
+                          "Num @ true\n"
+                          "Num @ false";
+
+void load_grammar_built_in()
+{
+    stringstream file_in(built_in_grammar);
+
+    unordered_map<string, int> nonterminal_mapping;
+    string load_line;
+    int index = 0;
+
+    while (getline(file_in, load_line)) {
+        if (load_line.length() <= 1) {
+            // empty line
+            continue;
+        }
+
+        while (load_line.back() == '\r' || load_line.back() == '\n') {
+            load_line.pop_back();
+        }
+
+        stringstream str_stream;
+        str_stream << load_line;
+
+        string char_name;
+
+        str_stream >> char_name;
+        // assume first character is nonterminal
+        int target_nonterminal_index;
+        auto result_iterator = nonterminal_mapping.find(char_name);
+        if (result_iterator == nonterminal_mapping.end()) {
+            // new nonterminal
+            nonterminal_mapping[char_name] = index;
+
+            Nonterminal::all_nonterminal_chars.emplace_back(char_name, index);
+            target_nonterminal_index = index;
+            ++index;
+        }
+        else {
+            target_nonterminal_index = result_iterator->second;
+        }
+
+        vector<Character> current_production;
+
+        str_stream >> char_name; // remove @
+
+        while (!str_stream.eof()) {
+            str_stream >> char_name;
+
+            if (char_name[0] < 'A' || char_name[0] > 'Z') {
+                // terminal char
+                // use lexical analysis to convert content('+') to lex_type(ADD)
+                vector<Lexicon> terminal_lex;
+                if (char_name == "num") {
+                    terminal_lex = lexical_analysis("0");
+                }
+                else {
+                    terminal_lex = lexical_analysis(char_name);
+                }
+
+                // the size of terminal_lex should be 1.
+                current_production.push_back(TerminalChar::all_terminal_chars[terminal_lex[0].convert_to_terminal_index()]);
+                continue;
+            }
+            result_iterator = nonterminal_mapping.find(char_name);
+            int nonterminal_in_production_idx;
+            if (result_iterator == nonterminal_mapping.end()) {
+                nonterminal_mapping[char_name] = index;
+
+                Nonterminal::all_nonterminal_chars.emplace_back(char_name, index);
+                nonterminal_in_production_idx = index;
+                ++index;
+            }
+            else {
+                nonterminal_in_production_idx = result_iterator->second;
+            }
+            current_production.push_back(Nonterminal::all_nonterminal_chars[nonterminal_in_production_idx]);
+        }
+
+        // set epsilon in first set
+        if (current_production.size() == 1 && current_production[0].is_terminal && current_production[0].index == TerminalChar::get_index("EPSILON")) {
+            Nonterminal::all_nonterminal_chars[target_nonterminal_index].epsilon_in_firstset = true;
+            current_production.clear();
+        }
+
+        Nonterminal::all_nonterminal_chars[target_nonterminal_index].productions.push_back(current_production);
+    }
 }
 
 void get_first()

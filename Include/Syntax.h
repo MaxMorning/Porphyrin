@@ -24,6 +24,7 @@ using namespace std;
 
 // load chars & productions from disk files
 void load_grammar_from_disk(const string& path);
+void load_grammar_built_in();
 
 // generate LR(1) analysis table
 // get first set

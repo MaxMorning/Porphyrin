@@ -941,7 +941,6 @@ void lock_symbol_to_gpr(int symbol_idx, int target_reg, vector<string>& target_t
 
 void lock_symbol_to_xmm(int symbol_idx, int target_reg, vector<string>& target_text, int quaternion_idx)
 {
-    cout << "LOCK " << variable_reg_map[symbol_idx] << '\t' << target_reg << endl;
     string mov_op = symbol_table[symbol_idx].data_type == DT_FLOAT ? "movss\t" : "movsd\t";
 
     // symbol already in target reg

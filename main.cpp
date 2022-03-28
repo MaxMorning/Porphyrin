@@ -62,6 +62,10 @@ int main(int argc, char* argv[])
                     }
                     break;
 
+                case 'v':
+                    cout << "G-- 1.0.1" << endl;
+                    break;
+
                 default:
                     cerr << "Invalid Compile Option" << endl;
                     return -1;
@@ -112,7 +116,8 @@ int main(int argc, char* argv[])
     // syntax analysis
     TerminalChar::init_terminal_char_set(); // the function might be called in prev codes
 
-    load_grammar_from_disk(grammar_path);
+//    load_grammar_from_disk(grammar_path);
+    load_grammar_built_in();
 #ifdef DEBUG
     cout << "Grammar load done." << endl;
 #endif
