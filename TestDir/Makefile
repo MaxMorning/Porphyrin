@@ -23,7 +23,7 @@ print.o : print.c
 
 target.s : test.c
 	cp $(GMM_PATH)g-- ./
-	-./g-- -G ../Grammar/G.txt test.c
+	-./g-- test.c -o target.s
 
 
 test_gcc : test_gcc.o print.o
