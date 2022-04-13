@@ -225,10 +225,10 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
 
                     if (!is_param) {
                         int arch_unit = 8;
-                        int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_idx]);
+                        int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
 
                         if (free_space != 0) {
-                            current_stack_top_addr -= free_space + int(BASE_DATA_TYPE_SIZE[symbol_idx]);
+                            current_stack_top_addr -= free_space + int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
                         }
 
                         current_stack_top_addr -= symbol.memory_size;

@@ -27,7 +27,7 @@ int main(int argc, char* argv[])
     char* source_code_path = nullptr;
 
     string grammar_path = "../Grammar/G.txt";
-    string target_path;
+    string target_path = "target.s";
     bool enable_print = false;
     bool gen_win_style_asm = false;
 
