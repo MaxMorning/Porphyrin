@@ -8,6 +8,7 @@ TestDir/*.txt
 TestDir/*.s
 TestDir/*.o
 TestDir/g--
-TestDir/test_gcc
+TestDir/test_clang
+TestDir/test_clang3
 TestDir/test
 TestDir/*.exe
