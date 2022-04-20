@@ -131,11 +131,11 @@ void generate_active_info_table(BaseBlock &base_block) {
             current_active_info.opr2_active_info = symbol_status[current_quaternion.opr2];
         }
 
-        if (opr1_is_var_array) {
+        if (opr1_is_var_array && current_quaternion.opr1 > -1) {
             symbol_status[current_quaternion.opr1] = i;
         }
 
-        if (opr2_is_var_array) {
+        if (opr2_is_var_array && current_quaternion.opr2 > -1) {
             symbol_status[current_quaternion.opr2] = i;
         }
 
@@ -152,7 +152,7 @@ void generate_active_info_table(BaseBlock &base_block) {
 #ifdef TARGET_DEBUG
     cout << "Active info" << endl;
     for (int i = 0; i < quaternion_active_info_table.size(); ++i) {
-        cout << i + base_block.start_index << '\t' << quaternion_active_info_table[i].opr1_active_info << '\t' << quaternion_active_info_table[i].opr2_active_info
+        cout << i << '\t' << quaternion_active_info_table[i].opr1_active_info << '\t' << quaternion_active_info_table[i].opr2_active_info
             << '\t' << quaternion_active_info_table[i].result_active_info << endl;
     }
 #endif

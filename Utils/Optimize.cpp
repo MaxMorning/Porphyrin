@@ -63,6 +63,11 @@ void split_base_blocks(vector<Quaternion>& quaternion_sequence)
     // first instr is always the entrance of a base block
     is_base_block_entry_array[0] = true;
 
+    // all function entrance are block entry
+    for (Function& function : Function::function_table) {
+        is_base_block_entry_array[function.entry_address] = true;
+    }
+
     for (int i = 0; i < quaternion_sequence.size(); ++i) {
         int reachable_dst = is_branch_IR(quaternion_sequence[i], i);
         if (reachable_dst == -1) {
@@ -1853,7 +1858,9 @@ void optimize_IR(vector<Quaternion>& quaternion_sequence)
         }
     }
 
+#ifdef OPTIMIZE_DEBUG
     print_optimize_sequence();
+#endif
 
     // split base block again
     split_base_blocks(optimized_sequence);

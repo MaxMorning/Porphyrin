@@ -1018,25 +1018,25 @@ int VariableUse__id_Indices_post_function(int* return_values_ptr)
     while (searching_idx >= 0) {
         if (symbol_table[analyse_symbol_stack[searching_idx].symbol_index].content == Node::current_node->child_nodes_ptr[0]->content) {
             // find array
-            SymbolEntry& symbolEntry = symbol_table[analyse_symbol_stack[searching_idx].symbol_index];
+            int symbol_index = analyse_symbol_stack[searching_idx].symbol_index;
 
             // check index valid & calc offset
             vector<int> indices_vector;
             build_array_index_vector(Node::current_node->child_nodes_ptr[1], indices_vector);
 
-            if (indices_vector.size() != symbolEntry.index_record.size()) {
+            if (indices_vector.size() != symbol_table[symbol_index].index_record.size()) {
                 Diagnose::printError(Node::current_node->offset, "Invalid index/indices to fetch an element from array.");
             }
 
             int offset_calc_start_index = quaternion_sequence.size();
-            int memory_offset_var_index = calc_array_element_offset(indices_vector, symbolEntry.index_record);
+            int memory_offset_var_index = calc_array_element_offset(indices_vector, symbol_table[symbol_index].index_record);
             int offset_calc_end_index = quaternion_sequence.size();
 
-            symbolEntry.is_used = true;
-            symbolEntry.last_use_offset = Node::current_node->offset;
+            symbol_table[symbol_index].is_used = true;
+            symbol_table[symbol_index].last_use_offset = Node::current_node->offset;
 
             int array_index = analyse_symbol_stack[searching_idx].symbol_index;
-            int new_symbol = get_temp_symbol(symbolEntry.data_type, false);
+            int new_symbol = get_temp_symbol(symbol_table[symbol_index].data_type, false);
             symbol_table[new_symbol].is_array = true; // when a symbol is both array and temp, means it is a reference of an element, maybe assigned
 
             // index_record[0..1] represent the quaternion which calc offset
@@ -1045,7 +1045,7 @@ int VariableUse__id_Indices_post_function(int* return_values_ptr)
             symbol_table[new_symbol].index_record.push_back(offset_calc_end_index);
 
             Quaternion fetch_quaternion{OP_INVALID, array_index, memory_offset_var_index, new_symbol};
-            switch (symbolEntry.data_type) {
+            switch (symbol_table[symbol_index].data_type) {
                 case DT_BOOL:
                     fetch_quaternion.op_code = OP_FETCH_BOOL;
                     break;

@@ -1,5 +1,6 @@
 GMM_PATH := ..\\cmake-build-release\\
 CC := gcc
+TB_FILE := test.c
 
 .PHONY: run_gmm
 run_gmm : test.exe
@@ -17,19 +18,19 @@ test.o : target.s
 	as -o $@ $^
 
 
-print.o : print.c
-	$(CC) -c $^
+print.o : print_win.c
+	$(CC) -c $^ -o print.o
 
 
-target.s : test.c
+target.s : $(TB_FILE)
 	copy $(GMM_PATH)g--.exe .\\
-	g-- -twin test.c -o target.s
+	g-- -twin $(TB_FILE) -o target.s
 
 
 test_gcc.exe : test_gcc.o print.o
 	$(CC) -o $@ $^
 
-test_gcc.o : test.c
+test_gcc.o : $(TB_FILE)
 	$(CC) -o $@ -c $^
 
 .PHONY: clean
