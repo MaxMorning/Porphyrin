@@ -13,7 +13,7 @@ void quickSort(int arr[ARRAY_SIZE], int first, int last) {
             }
 
             while (arr[j] > arr[pivot]) {
-                j = j + 1;
+                j = j - 1;
             }
 
             if (i < j) {
