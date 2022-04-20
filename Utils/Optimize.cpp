@@ -1738,6 +1738,7 @@ void code_clean_up()
     // update function entrance
     for (Function& function : Function::function_table) {
         int base_block_idx = search_base_block(function.entry_address);
+        cout << "Entry Addr " << function.entry_address << endl;
         assert(base_block_idx >= 0);
         function.entry_address -= nop_instr_cnt[base_block_idx];
     }
@@ -1851,6 +1852,8 @@ void optimize_IR(vector<Quaternion>& quaternion_sequence)
             optimized_sequence.push_back(quaternion);
         }
     }
+
+    print_optimize_sequence();
 
     // split base block again
     split_base_blocks(optimized_sequence);
