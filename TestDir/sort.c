@@ -1,32 +1,39 @@
-#define ARRAY_SIZE 32768
+#define ARRAY_SIZE 32
 
-void quickSort(int arr[ARRAY_SIZE], int first, int last) {
-    int i, j, pivot;
-    int temp;
-    if (first < last) {
-        pivot = first;
-        i = first;
-        j = last;
-        while (i < j) {
-            while (arr[i] <= arr[pivot] && i < last) {
-                i = i + 1;
-            }
-
-            while (arr[j] > arr[pivot]) {
-                j = j - 1;
-            }
-
-            if (i < j) {
-                temp = arr[i];
-                arr[i] = arr[j];
-                arr[j] = temp;
-            }
+int fun(int arr[ARRAY_SIZE], int low, int high) {
+    int key;
+    key = arr[low];
+    while (low < high) {
+        while (low < high && arr[high] >= key) {
+            high = high - 1;
         }
-        temp = arr[pivot];
-        arr[pivot] = arr[j];
-        arr[j] = temp;
-        quickSort(arr, first, j - 1);
-        quickSort(arr, j + 1, last);
+
+        if (low < high) {
+            arr[low] = arr[high];
+            low = low + 1;
+        }
+
+        while (low < high && arr[low] <= key) {
+            low = low + 1;
+        }
+
+        if (low < high) {
+            arr[high] = arr[low];
+
+            high = high - 1;
+        }
+    }
+
+    arr[low] = key;
+    return low;
+}
+
+void quickSort(int arr[ARRAY_SIZE], int start, int end) {
+    int pos;
+    if (start < end) {
+        pos = fun(arr, start, end);
+        quickSort(arr, start, pos - 1);
+        quickSort(arr, pos + 1, end);
     }
 }
 

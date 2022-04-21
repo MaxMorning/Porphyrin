@@ -928,7 +928,9 @@ void lock_symbol_to_gpr(int symbol_idx, int target_reg, vector<string>& target_t
                 // keep mapping
                 if (!symbol_table[symbol_idx].is_const) {
                     gpr_variable_map[target_reg].insert(symbol_idx);
-                    gpr_variable_map[variable_reg_map[symbol_idx]].erase(symbol_idx);
+                    if (variable_reg_map[symbol_idx] >= 0) {
+                        gpr_variable_map[variable_reg_map[symbol_idx]].erase(symbol_idx);
+                    }
                     variable_reg_map[symbol_idx] = target_reg;
                 }
             }
