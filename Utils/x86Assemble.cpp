@@ -124,7 +124,8 @@ void generate_active_info_table(BaseBlock &base_block) {
                                  OP_CODE_OPR_USAGE[current_quaternion.op_code][0] == USAGE_VAR;
         bool opr2_is_var_array = OP_CODE_OPR_USAGE[current_quaternion.op_code][1] == USAGE_ARRAY ||
                                  OP_CODE_OPR_USAGE[current_quaternion.op_code][1] == USAGE_VAR;
-        if (opr1_is_var_array) {
+        if (opr1_is_var_array && current_quaternion.opr1 >= 0) {
+            // if op_code == OP_RETURN , opr1 can be -1
             current_active_info.opr1_active_info = symbol_status[current_quaternion.opr1];
         }
 
@@ -668,7 +669,10 @@ void update_next_use_table(int quaternion_idx) {
     QuaternionActiveInfo &current_info = quaternion_active_info_table[quaternion_idx];
     if (OP_CODE_OPR_USAGE[current_quaternion.op_code][0] == USAGE_VAR ||
         OP_CODE_OPR_USAGE[current_quaternion.op_code][0] == USAGE_ARRAY) {
-        variable_next_use[current_quaternion.opr1] = current_info.opr1_active_info;
+        // if op_code == OP_RETURN , opr1 can be -1
+        if (current_quaternion.opr1 >= 0) {
+            variable_next_use[current_quaternion.opr1] = current_info.opr1_active_info;
+        }
     }
 
     if (OP_CODE_OPR_USAGE[current_quaternion.op_code][1] == USAGE_VAR ||
@@ -2355,7 +2359,7 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
             leave_correction_function_idx.push_back(current_function);
             target_text.emplace_back("leave");
             target_text.emplace_back("ret");
-            break;
+            return;
         }
 
         case OP_NOP:
