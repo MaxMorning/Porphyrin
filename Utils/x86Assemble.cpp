@@ -1198,31 +1198,39 @@ void fetch_xmm_from_array(int quaternion_idx, vector<string>& target_text, char 
         }
 
         target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-        target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
+        target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + XMMRegStr[result_xmm]);
 
-        gpr_set_mapping(current_quaternion.opr1, base_gpr);
+        xmm_set_mapping(current_quaternion.opr1, base_gpr);
     }
     else {
         // local array & parameter array
         int base_gpr = variable_reg_map[current_quaternion.opr1];
         if (base_gpr == -1) {
-            // local array or parameter array which address not store in mem
+            // local array or parameter array which address not store in reg
             target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
+            if (symbol_table[current_quaternion.opr1].value.bool_value) {
+                // is a parameter array
+                // ask a gpr to store address of array
+                base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
 
+                target_text.push_back("movq\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) + "(%rbp), %" + GPRStr[base_gpr][3]);
+                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + XMMRegStr[result_xmm]);
+                gpr_set_mapping(current_quaternion.opr1, base_gpr);
+            }
+            else {
+                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + XMMRegStr[result_xmm]);
+            }
         }
         else {
             // in register , always be a parameter array
             target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_xmm][2]);
+            target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + XMMRegStr[result_xmm]);
 
         }
-        // local array
-
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
-    gpr_set_mapping(current_quaternion.result, result_xmm);
+    xmm_set_mapping(current_quaternion.result, result_xmm);
 }
 
 void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char size)
@@ -1291,7 +1299,13 @@ void store_xmm_to_array(int quaternion_idx, vector<string>& target_text, char si
     Quaternion& current_quaternion = optimized_sequence[quaternion_idx];
 
     string mov_op = symbol_table[current_quaternion.result].data_type == DT_DOUBLE ? "movsd" : "movss";
-    int result_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+    int opr1_xmm = variable_reg_map[current_quaternion.opr1];
+    if (opr1_xmm == -1) {
+        opr1_xmm = alloc_one_free_xmm(quaternion_idx, target_text);
+
+        move_to_xmm(opr1_xmm, current_quaternion.opr1, target_text);
+    }
+
     int offset_gpr = variable_reg_map[current_quaternion.opr2];
     if (offset_gpr == -1) {
         // load from mem
@@ -1311,18 +1325,34 @@ void store_xmm_to_array(int quaternion_idx, vector<string>& target_text, char si
         }
 
         target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-        target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+        target_text.push_back(mov_op + "\t %" + XMMRegStr[opr1_xmm] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
 
-        gpr_set_mapping(current_quaternion.opr1, base_gpr);
+        xmm_set_mapping(current_quaternion.opr1, base_gpr);
     }
     else {
         // local array
         target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-        target_text.push_back(mov_op + "\t %" + GPRStr[result_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+        if (symbol_table[current_quaternion.result].value.bool_value) {
+            // target array is parameter array
+            // ask a gpr to store address of array
+            int base_gpr = variable_reg_map[current_quaternion.result];
+            if (base_gpr == -1) {
+                base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+
+                target_text.push_back("movq\t" + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp), %" + GPRStr[base_gpr][3]);
+            }
+
+            target_text.push_back(mov_op + "\t %" + XMMRegStr[opr1_xmm] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+
+            gpr_set_mapping(current_quaternion.result, base_gpr);
+        }
+        else {
+            target_text.push_back(mov_op + "\t %" + XMMRegStr[opr1_xmm] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+        }
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
-    gpr_set_mapping(current_quaternion.result, result_gpr);
+    xmm_set_mapping(current_quaternion.opr1, opr1_xmm);
 }
 
 void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, BaseBlock& base_block) {
@@ -2139,10 +2169,10 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
 
             xmm_set_mapping(current_quaternion.result, result_xmm);
             // release opr1
-            if (quaternion_active_info_table[quaternion_idx].opr1_active_info == NON_ACTIVE) {
-                gpr_variable_map[variable_reg_map[current_quaternion.opr1]].erase(variable_reg_map[current_quaternion.opr1]);
-                variable_reg_map[current_quaternion.opr1] = -1;
-            }
+//            if (variable_reg_map[current_quaternion.opr1] != -1 && quaternion_active_info_table[quaternion_idx].opr1_active_info == NON_ACTIVE) {
+//                gpr_variable_map[variable_reg_map[current_quaternion.opr1]].erase(variable_reg_map[current_quaternion.opr1]);
+//                variable_reg_map[current_quaternion.opr1] = -1;
+//            }
             break;
         }
 
@@ -2155,10 +2185,10 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
             xmm_set_mapping(current_quaternion.result, result_xmm);
 
             // release opr1
-            if (quaternion_active_info_table[quaternion_idx].opr1_active_info == NON_ACTIVE) {
-                gpr_variable_map[variable_reg_map[current_quaternion.opr1]].erase(variable_reg_map[current_quaternion.opr1]);
-                variable_reg_map[current_quaternion.opr1] = -1;
-            }
+//            if (variable_reg_map[current_quaternion.opr1] != -1 && quaternion_active_info_table[quaternion_idx].opr1_active_info == NON_ACTIVE) {
+//                gpr_variable_map[variable_reg_map[current_quaternion.opr1]].erase(variable_reg_map[current_quaternion.opr1]);
+//                variable_reg_map[current_quaternion.opr1] = -1;
+//            }
             break;
         }
 
