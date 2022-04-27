@@ -1,6 +1,8 @@
 cmake-build-debug/
+cmake-build-debug-remote-host/
 
 cmake-build-release/
+cmake-build-release-remote-host/
 
 .idea/
 .DS_Store

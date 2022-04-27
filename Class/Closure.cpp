@@ -6,6 +6,7 @@
 //
 // Create Date: 2021/11/2
 //
+#include <cstring>
 
 #include "Closure.h"
 

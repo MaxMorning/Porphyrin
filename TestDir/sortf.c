@@ -1,4 +1,4 @@
-#define ARRAY_SIZE 16384
+#define ARRAY_SIZE 1024
 
 int fun(float arr[ARRAY_SIZE], int low, int high) {
     float key;

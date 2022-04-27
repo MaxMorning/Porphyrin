@@ -10,6 +10,7 @@
 #include "Include/x86Assemble.h"
 #include "Include/Optimize.h"
 #include <cassert>
+#include <cstring>
 
 #define INVALID_MEMORY_OFFSET 2147483647
 
@@ -204,7 +205,9 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
             // generate entrance code
             target_text.push_back(function_name_prefix + function.name + ':');
 
-            target_text.emplace_back("enter $?, $0");
+            target_text.emplace_back("pushq\t%rbp");
+            target_text.emplace_back("movq\t%rsp, %rbp");
+            target_text.emplace_back("subq\t$?, %rsp");
 
             function_entrance_points.push_back(target_text.size() - 1);
 
@@ -2469,7 +2472,8 @@ void sp_sub_back_patch(vector<string> &target_text) {
     }
 
     for (int i = 0; i < function_entrance_points.size(); ++i) {
-        target_text[function_entrance_points[i]] = "enter\t$" + to_string(-1 * (function_lowest_mem_offset[i])) + ", $0";
+        target_text[function_entrance_points[i]] = "subq\t$" + to_string(-1 * (function_lowest_mem_offset[i])) + ", %rsp";
+//        target_text[function_entrance_points[i]] = "enter\t$" + to_string(-1 * (function_lowest_mem_offset[i])) + ", $0";
     }
 
     for (int i = 0; i < function_leave_correction_points.size(); ++i) {

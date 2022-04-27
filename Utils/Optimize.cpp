@@ -11,6 +11,7 @@
 #include "Include/Optimize.h"
 #include <cassert>
 #include <algorithm>
+#include <cstring>
 
 #define IS_NOT_BRANCH_IR -5
 const int MAX_INT = 2147483647;
