@@ -208,35 +208,7 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
 
             function_entrance_points.push_back(target_text.size() - 1);
 
-            // initial array offset
             current_stack_top_addr = 0;
-            for (int symbol_idx = 0; symbol_idx < symbol_table.size(); ++symbol_idx) {
-                SymbolEntry& symbol = symbol_table[symbol_idx];
-
-                if (symbol.function_index == i && symbol.is_array && !symbol.is_temp) {
-                    // check if is param array
-                    bool is_param = false;
-                    for (int param : Function::function_table[symbol.function_index].parameter_index) {
-                        if (param == symbol_idx) {
-                            is_param = true;
-                            break;
-                        }
-                    }
-
-                    if (!is_param) {
-                        int arch_unit = 8;
-                        int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
-
-                        if (free_space != 0) {
-                            current_stack_top_addr -= free_space + int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
-                        }
-
-                        current_stack_top_addr -= symbol.memory_size;
-
-                        symbol.memory_offset = current_stack_top_addr;
-                    }
-                }
-            }
 
             last_calc_symbol = -1;
             current_function = i;
@@ -269,6 +241,50 @@ bool gen_entry_code(BaseBlock &base_block, vector<string> &target_text) {
                     }
                 }
             }
+
+            // initial array offset
+            for (int symbol_idx = 0; symbol_idx < symbol_table.size(); ++symbol_idx) {
+                SymbolEntry& symbol = symbol_table[symbol_idx];
+
+                if (symbol.function_index == i && symbol.is_array && !symbol.is_temp) {
+                    // check if is param array
+                    bool is_param = false;
+                    for (int param : Function::function_table[symbol.function_index].parameter_index) {
+                        if (param == symbol_idx) {
+                            is_param = true;
+                            break;
+                        }
+                    }
+
+                    symbol.value.bool_value = is_param;
+                    if (!is_param) {
+                        int arch_unit = 8;
+                        int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
+
+                        if (free_space != 0) {
+                            current_stack_top_addr -= free_space + int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_idx].data_type]);
+                        }
+
+                        current_stack_top_addr -= symbol.memory_size;
+
+                        symbol.memory_offset = current_stack_top_addr;
+                    }
+                    else {
+                        int free_space = (current_stack_top_addr) % 8;
+
+                        if (free_space != 0) {
+                            current_stack_top_addr -= free_space + 8;
+                        }
+
+                        current_stack_top_addr -= 8;
+
+                        symbol.memory_offset = current_stack_top_addr;
+
+                        target_text.push_back("movq\t%" + GPRStr[variable_reg_map[symbol_idx]][3] + ", " + to_string(symbol.memory_offset) + "(%rbp)");
+                    }
+                }
+            }
+
 
             return true;
         }
@@ -1129,9 +1145,20 @@ void fetch_gpr_from_array(int quaternion_idx, vector<string>& target_text, char 
         // local array & parameter array
         int base_gpr = variable_reg_map[current_quaternion.opr1];
         if (base_gpr == -1) {
-            // local array or parameter array which address not store in mem
+            // local array or parameter array which address not store in reg
             target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-            target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
+            if (symbol_table[current_quaternion.opr1].value.bool_value) {
+                // is a parameter array
+                // ask a gpr to store address of array
+                base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+
+                target_text.push_back("movq\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) + "(%rbp), %" + GPRStr[base_gpr][3]);
+                target_text.push_back(mov_op + "\t(%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
+                gpr_set_mapping(current_quaternion.opr1, base_gpr);
+            }
+            else {
+                target_text.push_back(mov_op + "\t" + to_string(symbol_table[current_quaternion.opr1].memory_offset) +"(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + "), %" + GPRStr[result_gpr][2]);
+            }
         }
         else {
             // in register , always be a parameter array
@@ -1236,7 +1263,23 @@ void store_gpr_to_array(int quaternion_idx, vector<string>& target_text, char si
     else {
         // local array
         target_text.push_back("andq\t$0x0000ffff, %" + GPRStr[offset_gpr][3]);
-        target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+        if (symbol_table[current_quaternion.result].value.bool_value) {
+            // target array is parameter array
+            // ask a gpr to store address of array
+            int base_gpr = variable_reg_map[current_quaternion.result];
+            if (base_gpr == -1) {
+                base_gpr = alloc_one_free_gpr(quaternion_idx, target_text);
+
+                target_text.push_back("movq\t" + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp), %" + GPRStr[base_gpr][3]);
+            }
+
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", (%" + GPRStr[base_gpr][3] + ", %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+
+            gpr_set_mapping(current_quaternion.result, base_gpr);
+        }
+        else {
+            target_text.push_back(mov_op + "\t %" + GPRStr[opr1_gpr][2] + ", " + to_string(symbol_table[current_quaternion.result].memory_offset) + "(%rbp, %" + GPRStr[offset_gpr][3] + ", " + size + ")");
+        }
     }
 
     gpr_set_mapping(current_quaternion.opr2, offset_gpr);
@@ -1910,7 +1953,12 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
                         int address_reg = alloc_one_free_gpr(quaternion_idx, target_text);
 
 
-                        target_text.push_back("leaq\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
+                        string load_addr_op = "leaq\t";
+                        if (symbol_table[current_quaternion.opr1].value.bool_value) {
+                            // is param array
+                            load_addr_op = "movq\t";
+                        }
+                        target_text.push_back(load_addr_op + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
                         target_text.push_back("push\t%" + GPRStr[address_reg][3]);
 
                         gpr_locked[address_reg] = false;
@@ -1943,7 +1991,12 @@ void generate_quaternion_text(int quaternion_idx, vector<string> &target_text, B
                     if (symbol_table[current_quaternion.opr1].is_array && !symbol_table[current_quaternion.opr1].is_temp) {
                         int address_reg = alloc_one_free_gpr(quaternion_idx, target_text);
 
-                        target_text.push_back("leaq\t" + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
+                        string load_addr_op = "leaq\t";
+                        if (symbol_table[current_quaternion.opr1].value.bool_value) {
+                            // is param array
+                            load_addr_op = "movq\t";
+                        }
+                        target_text.push_back(load_addr_op + get_symbol_store_text(current_quaternion.opr1) + ", %" + GPRStr[address_reg][3]);
                         gpr_set_mapping(current_quaternion.opr1, address_reg);
 
                         lock_symbol_to_gpr(current_quaternion.opr1, par_usable_gpr_index, target_text, quaternion_idx, 64);

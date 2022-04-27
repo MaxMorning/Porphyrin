@@ -1451,26 +1451,14 @@ void optimize_base_block(BaseBlock& base_block)
 
             case OP_ARRAY_STORE:
             {
-                base_block.out_set.insert(quaternion.opr1);
-                base_block.out_set.insert(quaternion.opr2);
-//                int opr1_node_index, opr2_node_index;
-//
-//                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
-//
-//                int search_common_expr_index = search_matched_node(quaternion.op_code, opr1_node_index, opr2_node_index,
-//                                                                   false);
-//                if (search_common_expr_index == -1) {
-//                    // no such common expr
-//                    int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
-//                    dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
-//                    dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
-//                    base_block.array_store_dags.insert(result_node_index);
-//                }
-//                else {
-//                    // find common expr
-//                    dag_nodes[search_common_expr_index]->represent_variables.emplace(quaternion.result);
-//                    variable_dag_node_map[quaternion.result] = search_common_expr_index;
-//                }
+                base_block.out_set.insert(quaternion.result);
+                int opr1_node_index, opr2_node_index;
+
+                dual_opr_preset(opr1_node_index, opr2_node_index, quaternion);
+
+                int result_node_index = create_dag_node(quaternion.result, quaternion.op_code);
+                dag_nodes[result_node_index]->opr1_ptr = opr1_node_index;
+                dag_nodes[result_node_index]->opr2_ptr = opr2_node_index;
 
                 break;
             }
@@ -1555,32 +1543,6 @@ void optimize_base_block(BaseBlock& base_block)
         generate_quaternions(*dag_nodes[out_symbol_idx], base_block.block_quaternion_sequence);
     }
 
-//    for (int out_active_symbol : base_block.out_set) {
-//        if (variable_dag_node_map[out_active_symbol] != -1) {
-//            // check if this variable is const and generate assign instr
-//            if (dag_nodes[variable_dag_node_map[out_active_symbol]]->op == OP_INVALID) {
-//                // get a const value == this variable
-//                int value_temp_var = -1;
-//
-//                for (int symbol_index : dag_nodes[variable_dag_node_map[out_active_symbol]]->represent_variables) {
-//                    if (symbol_table[symbol_index].is_const || (base_block.in_set.find(symbol_index) != base_block.in_set.end())) {
-//                        value_temp_var = symbol_index;
-//                        break;
-//                    }
-//                }
-//
-//                if (value_temp_var >= 0 && value_temp_var != out_active_symbol) {
-//                    base_block.block_quaternion_sequence.push_back({OP_ASSIGNMENT, value_temp_var, -1, (int)(out_active_symbol)});
-//                }
-//            }
-//            generate_quaternions(*dag_nodes[variable_dag_node_map[out_active_symbol]], base_block.block_quaternion_sequence);
-//        }
-//    }
-
-//    // generate array store
-//    for (int array_store_dag_idx : base_block.array_store_dags) {
-//        generate_quaternions(*dag_nodes[array_store_dag_idx], base_block.block_quaternion_sequence);
-//    }
 
     // process 2 out active var use one DAG node
     for (int out_active_symbol : base_block.out_set) {
@@ -1612,7 +1574,7 @@ void optimize_base_block(BaseBlock& base_block)
     Quaternion post_process_last_quaternion = quaternion_sequence[base_block.end_index];
     if (post_process_last_quaternion.op_code == OP_CALL || post_process_last_quaternion.op_code == OP_JMP ||
             post_process_last_quaternion.op_code == OP_JNZ || post_process_last_quaternion.op_code == OP_JEQ
-            || post_process_last_quaternion.op_code == OP_RETURN || post_process_last_quaternion.op_code == OP_ARRAY_STORE) {
+            || post_process_last_quaternion.op_code == OP_RETURN) {
         if (post_process_last_quaternion.opr1 != -1 && OP_CODE_OPR_USAGE[post_process_last_quaternion.op_code][0] == USAGE_VAR
         && variable_dag_node_map[post_process_last_quaternion.opr1] != -1) {
             post_process_last_quaternion.opr1 = dag_nodes[variable_dag_node_map[post_process_last_quaternion.opr1]]->symbol_index;

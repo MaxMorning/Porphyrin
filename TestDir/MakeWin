@@ -4,7 +4,7 @@ TB_FILE := test.c
 
 .PHONY: run_gmm
 run_gmm : test.exe
-	test
+	test.exe
 
 .PHONY: run_gcc
 run_gcc : test_gcc.exe
