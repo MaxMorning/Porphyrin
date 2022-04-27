@@ -1,65 +1,21 @@
-#define ARRAY_SIZE 32
-
-int fun(int arr[ARRAY_SIZE], int low, int high) {
-    int key;
-    key = arr[low];
-    while (low < high) {
-        while (low < high && arr[high] >= key) {
-            high = high - 1;
-        }
-
-        if (low < high) {
-            arr[low] = arr[high];
-            low = low + 1;
-        }
-
-        while (low < high && arr[low] <= key) {
-            low = low + 1;
-        }
-
-        if (low < high) {
-            arr[high] = arr[low];
-
-            high = high - 1;
-        }
-    }
-
-    arr[low] = key;
-    return low;
+float to_float(int i)
+{
+    return i;
 }
 
-void quickSort(int arr[ARRAY_SIZE], int start, int end) {
-    int pos;
-    if (start < end) {
-        pos = fun(arr, start, end);
-        quickSort(arr, start, pos - 1);
-        quickSort(arr, pos + 1, end);
-    }
-}
+double gmm_main()
+{
+    int i = 1;
+    double sum = 0;
+    int signal = 1;
 
-double gmm_main() {
-    // gen array content
-    int arr[ARRAY_SIZE];
-
-    int i = 0;
-    while (i < ARRAY_SIZE) {
-        arr[i] = ARRAY_SIZE - i;
-
-        i = i + 1;
+    while (i < 214748360) {
+        sum = sum + signal / to_float(i);
+        i = i + 2;
+        signal = -signal;
     }
 
-    // sort
-    quickSort(arr, 0, ARRAY_SIZE - 1);
+    sum = sum * 4;
 
-    // check correction
-    i = 0;
-    while (i < ARRAY_SIZE - 1) {
-        if (arr[i] > arr[i + 1]) {
-            return 1;
-        }
-
-        i = i + 1;
-    }
-
-    return 0;
+    return sum;
 }

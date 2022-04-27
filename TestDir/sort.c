@@ -1,4 +1,4 @@
-#define ARRAY_SIZE 32
+#define ARRAY_SIZE 32768
 
 int fun(int arr[ARRAY_SIZE], int low, int high) {
     int key;
