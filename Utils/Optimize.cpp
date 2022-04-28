@@ -1691,7 +1691,6 @@ void optimize_base_block(BaseBlock& base_block)
     dag_nodes.clear();
 
     delete[] variable_dag_node_map;
-//    throw "Not implemented!";
 }
 
 void unreachable_block_set_nop(vector<Quaternion>& target_sequence)
@@ -1761,7 +1760,7 @@ void code_clean_up()
     // update function entrance
     for (Function& function : Function::function_table) {
         int base_block_idx = search_base_block(function.entry_address);
-        cout << "Entry Addr " << function.entry_address << endl;
+
         assert(base_block_idx >= 0);
         function.entry_address -= nop_instr_cnt[base_block_idx];
     }

@@ -262,13 +262,6 @@ int LogicalAnd__LogicalAnd_LogicalAND_Comparison_post_action(int* return_values_
     back_patch(E1->truelist, E2->quad);
     Node::current_node->truelist = E2->truelist;
     Node::current_node->falselist = merge(E1->falselist, E2->falselist);
-//    if (wont_be_backpatched())
-//    {
-//        back_patch(Node::current_node->truelist, emit(OP_CODE::OP_LI_BOOL, 1, -1, ret));
-//        emit(OP_CODE::OP_JMP, -1, -1, 2);
-//        back_patch(Node::current_node->falselist, emit(OP_CODE::OP_LI_BOOL, 0, -1, ret));
-//    }
-    cout << "RetAnd " << ret << endl;
 
     return ret;
 }
