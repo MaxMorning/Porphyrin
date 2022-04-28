@@ -472,10 +472,10 @@ void calculate_use_def_sets()
 
                 case OP_RETURN:
                 {
-                    if (quaternion.result != -1) {
-                        if ((!symbol_status[quaternion.result][0]) && (!symbol_status[quaternion.result][1])) {
-                            symbol_status[quaternion.result][1] = true;
-                            temp_def_set.emplace(quaternion.result);
+                    if (quaternion.opr1 != -1) {
+                        if ((!symbol_status[quaternion.opr1][0]) && (!symbol_status[quaternion.opr1][1])) {
+                            symbol_status[quaternion.opr1][0] = true;
+                            temp_use_set.emplace(quaternion.opr1);
                         }
                     }
 
@@ -524,9 +524,60 @@ void calculate_use_def_sets()
     delete[] symbol_status;
 }
 
+bool** reachable_matrix = nullptr;
+void calculate_succeed_sets()
+{
+    reachable_matrix = new bool*[base_blocks.size()];
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        reachable_matrix[i] = new bool[base_blocks.size()];
+        memset(reachable_matrix[i], 0, base_blocks.size() * sizeof(bool));
+    }
+
+    // initial
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        reachable_matrix[i][i] = true;
+        if (base_blocks[i].next_block_0_ptr != MAX_INT) {
+            reachable_matrix[i][base_blocks[i].next_block_0_ptr] = true;
+        }
+
+        if (base_blocks[i].next_block_1_ptr != MAX_INT) {
+            reachable_matrix[i][base_blocks[i].next_block_1_ptr] = true;
+        }
+    }
+
+    //  build reachable matrix
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        for (int j = 0; j < base_blocks.size(); ++j) {
+            if (!reachable_matrix[i][j]) {
+                for (int k = 0; k < base_blocks.size(); ++k) {
+                    if (reachable_matrix[i][k] && reachable_matrix[k][j]) {
+                        reachable_matrix[i][j] = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+
+#ifdef OPTIMIZE_DEBUG
+    cout << "Reachable matrix" << endl;
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        cout << i << '\t';
+        for (int j = 0; j < base_blocks.size(); ++j) {
+            cout << reachable_matrix[i][j] << ' ';
+        }
+        cout << endl;
+    }
+
+    cout << endl;
+#endif
+}
+
 void calculate_active_symbol_sets(bool need_process_call_par)
 {
     calculate_use_def_sets();
+    calculate_succeed_sets();
 
     // calculate in_set and out_set
     // referenced from ISBN 978-7-302-38141-9  P263
@@ -539,26 +590,23 @@ void calculate_active_symbol_sets(bool need_process_call_par)
     while (change) {
         change = false;
 
-        for (BaseBlock& baseBlock : base_blocks) {
+        for (int i = 0; i < base_blocks.size(); ++i) {
+            BaseBlock& baseBlock = base_blocks[i];
             bool single_change = false;
-            if (baseBlock.next_block_0_ptr != MAX_INT) {
-                for (int symbol_index : base_blocks[baseBlock.next_block_0_ptr].in_set) {
-                    auto find_iter = baseBlock.out_set.find(symbol_index);
-                    if (find_iter == baseBlock.out_set.end()) {
-                        // not exist
-                        baseBlock.out_set.emplace(symbol_index);
-                        single_change = true;
-                    }
-                }
-            }
 
-            if (baseBlock.next_block_1_ptr != MAX_INT) {
-                for (int symbol_index : base_blocks[baseBlock.next_block_1_ptr].in_set) {
-                    auto find_iter = baseBlock.out_set.find(symbol_index);
-                    if (find_iter == baseBlock.out_set.end()) {
-                        // not exist
-                        baseBlock.out_set.emplace(symbol_index);
-                        single_change = true;
+            for (int j = 0; j < base_blocks.size(); ++j) {
+                if (i == j) {
+                    continue;
+                }
+
+                if (reachable_matrix[i][j]) {
+                    for (int symbol_index : base_blocks[j].in_set) {
+                        auto find_iter = baseBlock.out_set.find(symbol_index);
+                        if (find_iter == baseBlock.out_set.end()) {
+                            // not exist
+                            baseBlock.out_set.emplace(symbol_index);
+                            single_change = true;
+                        }
                     }
                 }
             }
@@ -594,6 +642,13 @@ void calculate_active_symbol_sets(bool need_process_call_par)
             }
         }
     }
+
+
+    for (int i = 0; i < base_blocks.size(); ++i) {
+        delete[] reachable_matrix[i];
+    }
+
+    delete[] reachable_matrix;
 
 #ifdef OPTIMIZE_DEBUG
     cout << "Base Block Symbol Info" << endl;

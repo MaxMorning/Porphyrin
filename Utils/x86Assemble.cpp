@@ -456,7 +456,8 @@ void backup_gpr_to_mem(int gpr_idx, int quaternion_idx, vector<string> &target_t
     Quaternion &current_quaternion = optimized_sequence[quaternion_idx];
 
     // generate data store code
-    for (int var_idx: gpr_variable_map[gpr_idx]) {
+    unordered_set<int> set_copy(gpr_variable_map[gpr_idx]);
+    for (int var_idx: set_copy) {
         if (!(ignore_quaternion_result && var_idx == current_quaternion.result) && variable_next_use[var_idx] > quaternion_idx) {
             generate_store(gpr_idx, var_idx, target_text);
         }
@@ -2375,7 +2376,10 @@ void generate_target_text_asm(BaseBlock &base_block, vector<string>& target_text
     memset(variable_reg_map, -1, symbol_table.size() * sizeof(int));
 
     variable_next_use = new int[symbol_table.size()];
-    memset(variable_next_use, -1, symbol_table.size() * sizeof(int));
+    for (int i = 0; i < symbol_table.size(); ++i) {
+        variable_next_use[i] = 2147483647;
+    }
+//    memset(variable_next_use, -1, symbol_table.size() * sizeof(int));
 
     for (auto & i : gpr_variable_map) {
         i.clear();
