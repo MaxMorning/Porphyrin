@@ -791,7 +791,18 @@ string get_symbol_store_text(int symbol_index)
     else {
         if (variable_reg_map[symbol_index] == -1) {
             // no reg stores, need load from memory
-            assert(symbol_table[symbol_index].memory_offset != INVALID_MEMORY_OFFSET);
+            // if variable not be saved in memory before, allocate it
+            if (symbol_table[symbol_index].memory_offset == INVALID_MEMORY_OFFSET) {
+                int target_mem_offset = current_stack_top_addr - symbol_table[symbol_index].memory_size;
+                int free_space = (current_stack_top_addr) % int(BASE_DATA_TYPE_SIZE[symbol_table[symbol_index].data_type]);
+                if (free_space != 0) {
+                    target_mem_offset -= free_space + BASE_DATA_TYPE_SIZE[symbol_table[symbol_index].data_type];
+                }
+
+                symbol_table[symbol_index].memory_offset = target_mem_offset;
+                current_stack_top_addr = target_mem_offset;
+            }
+
             return to_string(symbol_table[symbol_index].memory_offset) + bp_str;
         }
         else {
